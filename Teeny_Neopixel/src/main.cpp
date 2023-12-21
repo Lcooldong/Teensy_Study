@@ -3,6 +3,7 @@
 #include "avr/pgmspace.h"
 
 #include <HardwareSerial.h>
+#include "neopixel.h"
 
 //#undef configUSE_TIME_SLICING
 //#define configUSE_TIME_SLICING 1
@@ -22,7 +23,7 @@ bool flag = false;
 BaseType_t xReturned;
 TaskHandle_t xHandle = NULL;
 
-
+MyNeopixel* myNeopixel = new MyNeopixel();
 
 static void task1(void*) {
     while (true) {
@@ -57,20 +58,26 @@ static void uartTask(void* ){
       {
         Serial.println("Press a");
         HWSERIAL.println("HW : Press a");
+        for (int i = 0; i < LED_COUNT; i++)
+        {
+            myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), 255, 1);
+        }
+        
       }
       else if (text == 'b')
       {
         Serial.println("Press b");
         HWSERIAL.println("HW : Press b");
+        for (int i = 0; i < LED_COUNT; i++)
+        {
+            myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 1);
+        }
       }
       
       //vTaskDelay(pdMS_TO_TICKS(1));
       // vTaskDelayUntil(&xLastWakeTime, 1/portTICK_PERIOD_MS);
       vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1));
     }
-
-
-
 }
 
 
@@ -82,6 +89,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
 
+    :: myNeopixel->InitNeopixel();
     ::delay(1'000);
 
     if (CrashReport) {
