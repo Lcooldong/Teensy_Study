@@ -37,7 +37,7 @@
 //#define SERIAL_SERVO
 
 const int ServoPotentionMeter_Pin = 14;
-const int Servo_Pin = 15;
+const int Servo_Pin = 14;
 int hallSensorValue = 0;
 
 const int blinkInterval =  300;

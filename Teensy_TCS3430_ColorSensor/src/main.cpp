@@ -90,8 +90,7 @@ static void colorSensorTask(void*)
     uint16_t YData = tcs3430.getYData();
     Serial.printf("Y Value : %d\r\n", YData);
     delay(100);
-  }
-  
+  } 
 }
 
 

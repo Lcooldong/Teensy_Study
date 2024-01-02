@@ -7,18 +7,27 @@
 #define LED_COUNT 12
 #define LED_PIN 17
 
-
 class MyNeopixel{
 
 
 public:
 
-    Adafruit_NeoPixel* strip = new Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
-    // 생성자
+    Adafruit_NeoPixel* strip;
     MyNeopixel()
-    {
-        void InitNeopixel();
+    {   
+        //strip 
+        strip = new Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+        InitNeopixel();
+        
+    }    
+
+
+    //생성자
+    MyNeopixel(uint16_t pinCnt, uint16_t pinNum)
+    {   
+        strip = new Adafruit_NeoPixel(pinCnt, pinNum, NEO_GRB + NEO_KHZ800);
+        InitNeopixel();
+        
     }
 
     // 소멸자
