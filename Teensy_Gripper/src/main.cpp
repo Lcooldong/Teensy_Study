@@ -20,11 +20,11 @@
 #define SERVO2_INITIAL_POS 10
 #define SERVO2_TARGET_POS 40
 
-#define COLOR_Y_MIN_VALUE 300
-#define COLOR_Y_MAX_VALUE 700
+#define COLOR_Y_MIN_VALUE 200
+#define COLOR_Y_MAX_VALUE 600
 
-#define HALL_MID_VALUE 2900
-#define HALL_TARGET_VALUE 1310
+#define HALL_MID_VALUE 600
+#define HALL_TARGET_VALUE 300
 
 #define HALL_FAR      0x00
 #define HALL_NEARBY   0x04
@@ -60,7 +60,7 @@ typedef struct __attribute__((packed)) packet
   uint8_t etx;
 }PACKET;
 
-PACKET dataToSend = {0,};
+PACKET dataToSend;
 PACKET buf;
 
 int hallSensorValue = 0;
@@ -114,41 +114,53 @@ static void uartTask(void* ){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
 
-      char text = Serial.read();
+      char text = HWSERIAL.read();
+      
+
       if(text == 'u')
       {
         Serial.println("Servo2 UP");
-        rotateServo(&buttonServo, SERVO2_INITIAL_POS, 5);        
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 50, 1);
+        rotateServo(&buttonServo, SERVO2_INITIAL_POS, 5);
+        dataToSend.buttonState = SERVO_RELEASE;
+        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
       }
       else if (text == 'd')
       {
         Serial.println("Servo2 DOWN");   
         rotateServo(&buttonServo, SERVO2_TARGET_POS, 2);
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 50, 1);
+        dataToSend.buttonState = SERVO_PUSH;
+        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
         
       }
       else if (text == 'o')
       {
         rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
         Serial.println("Servo Open");
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 50, 1);
+        dataToSend.servoState = SERVO_OPENED;
+        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
         
       }
       else if (text == 'c')
       {
         rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
         Serial.println("Servo Close");
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 50, 1);
+        dataToSend.servoState = SERVO_CLOSED;
+        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
         
       }
       else if (text == 'n')
       {
         vTaskResume(colorSensorHandle);
+        dataToSend.colorState = COLOR_ON;
       }
       else if (text == 'f')
       {
         vTaskSuspend(colorSensorHandle);
+        dataToSend.colorState = COLOR_OFF;
         for (int i = 0; i < LED_COUNT; i++)
         {
             myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
@@ -228,27 +240,18 @@ static void hallSensorTask(void*)
       dataToSend.hallState = HALL_FAR;
     }
     
-    ::vTaskDelay(pdMS_TO_TICKS(10));
+    ::vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
-static void stopSensorTask(void*)
-{ 
-  
-}
+
 
 // Setup
 FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.begin(115'200);
-    
-    while (!Serial)
-    {
-      delay(100);
-    }
-    
-    ::Serial.println("========Start Teensy Gripper========");
-    ::Serial.flush();
     HWSERIAL.begin(115200);
+    
+
     Wire.begin();
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
@@ -258,7 +261,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
 
     for (int i = 0; i < LED_COUNT; i++)
     {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 5);
     }
 
     for (int i = 0; i < 10; i++)
@@ -270,7 +273,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
       Serial.println("Please check that the IIC device is properly connected");
       delay(1000);
     }
-    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 50, 1);
+    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 10);
     ::delay(1'000);
 
     if (CrashReport) {
@@ -298,12 +301,13 @@ FLASHMEM __attribute__((noinline)) void setup() {
     //   //vTaskDelete(xHandle);
     // }
 
-
     ::vTaskSuspend(colorSensorHandle);
     ::vTaskSuspend(hallSensorHandle);
     ::vTaskStartScheduler();
     
     ::delay(1'000);
+    ::Serial.println("========Start Teensy Gripper========");
+    ::Serial.flush();
   
 }
 
@@ -326,10 +330,10 @@ bool sendPacket(uint8_t* _data, size_t len)
 
   for (size_t i = 0; i < len; i++)
   {
-    Serial.printf("0x%x \r\n", _data[i]);
+    //Serial.printf("0x%x \r\n", _data[i]);
     HWSERIAL.write(_data[i]);
   }
-  
+  //Serial.println("-----------");
   return true;
 }
 
