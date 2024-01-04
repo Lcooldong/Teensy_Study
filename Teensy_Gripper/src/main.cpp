@@ -20,8 +20,8 @@
 #define SERVO2_INITIAL_POS 10
 #define SERVO2_TARGET_POS 40
 
-#define COLOR_Y_MIN_VALUE 200
-#define COLOR_Y_MAX_VALUE 600
+#define COLOR_Y_MIN_VALUE 250
+#define COLOR_Y_MAX_VALUE 550
 
 #define HALL_MID_VALUE 600
 #define HALL_TARGET_VALUE 300
@@ -181,7 +181,7 @@ static void uartTask(void* ){
       
       //vTaskDelay(pdMS_TO_TICKS(1));
       // vTaskDelayUntil(&xLastWakeTime, 1/portTICK_PERIOD_MS);
-      vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1));
+      //vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1));
     }
 }
 
