@@ -255,7 +255,7 @@ static void buttonTask(void*)
     lastButtonValue = buttonValue;
     int openCloseCount = 0;
     //Serial.printf("Button Value : %d\r\n", buttonValue);
-    ::vTaskDelay(pdMS_TO_TICKS(100));
+    //::vTaskDelay(pdMS_TO_TICKS(100));
     // Pull-Up
     if(buttonValue == 0)
     {
@@ -265,17 +265,19 @@ static void buttonTask(void*)
       {
         Serial.println("Start While");
         // 500ms 이상 눌렀을 때
-        if(openCloseCount++ > 5){
+        if(++openCloseCount >= 5){
 
           pressingButtonFlag = true;
           Serial.println("Button Pressing");
           if(dataToSend.servoState == SERVO_CLOSED)
           {
             dataToSend.servoState = SERVO_OPENED;
+            Serial.println("Servo Open");
           }
           else if (dataToSend.servoState == SERVO_OPENED)
           {
             dataToSend.servoState = SERVO_CLOSED;
+            Serial.println("Servo Close");
           }
 
           ::vTaskDelay(pdMS_TO_TICKS(500));
@@ -294,14 +296,23 @@ static void buttonTask(void*)
         if(dataToSend.lockerState == SERVO_RELEASE)
         {
           dataToSend.lockerState = SERVO_PUSH;
-          ::vTaskDelay(pdMS_TO_TICKS(500));
+          Serial.println("Servo Push");
+          ::vTaskDelay(pdMS_TO_TICKS(100));
         }
         else if (dataToSend.lockerState == SERVO_PUSH)
         {
           dataToSend.lockerState = SERVO_RELEASE;
-          ::vTaskDelay(pdMS_TO_TICKS(500));
+          Serial.println("Servo Release");
+          ::vTaskDelay(pdMS_TO_TICKS(100));
         }
-      }   
+      }
+
+      while (!digitalRead(button_Pin))
+      {
+        Serial.println("Release your button");
+        ::vTaskDelay(pdMS_TO_TICKS(100));
+      }
+         
 
     }
   }
