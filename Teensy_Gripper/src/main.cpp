@@ -46,6 +46,7 @@ const int SDA_Pin = 18;
 const int SCL_Pin = 19;
 
 const int hallSensor_Pin = 20;
+const int button_Pin = 21;
 
 const int blinkInterval =  300;
 const int serialInterval = 1000;
@@ -56,7 +57,7 @@ typedef struct __attribute__((packed)) packet
   uint8_t servoState;
   uint8_t hallState;
   uint8_t colorState;
-  uint8_t buttonState;
+  uint8_t lockerState;
   uint8_t etx;
 }PACKET;
 
@@ -66,7 +67,9 @@ PACKET buf;
 int hallSensorValue = 0;
 int hallCount = 0;
 uint8_t gripperPos = 0;
-uint8_t buttonPos = 0;
+uint8_t lockerPos = 0;
+bool lastButtonValue = true; // Pull-Up -> 1
+bool pressingButtonFlag = false;
 
 TaskHandle_t colorSensorHandle;
 TaskHandle_t hallSensorHandle;
@@ -79,7 +82,7 @@ MyNeopixel* myNeopixel = new MyNeopixel(12, ringNeopixel_Pin);
 MyNeopixel* stateNeopixel = new MyNeopixel(1, singNeopixel_Pin);
 DFRobot_TCS3430 tcs3430;
 PWMServo gripperServo;
-PWMServo buttonServo;
+PWMServo lockerServo;
 
 
 
@@ -111,7 +114,7 @@ static void tickTock(void*) {
 
 
 static void uartTask(void* ){
-  TickType_t xLastWakeTime = xTaskGetTickCount();
+  //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
 
       char text = HWSERIAL.read();
@@ -120,16 +123,16 @@ static void uartTask(void* ){
       if(text == 'u')
       {
         Serial.println("Servo2 UP");
-        rotateServo(&buttonServo, SERVO2_INITIAL_POS, 5);
-        dataToSend.buttonState = SERVO_RELEASE;
+        rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
+        dataToSend.lockerState = SERVO_RELEASE;
         sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
       }
       else if (text == 'd')
       {
         Serial.println("Servo2 DOWN");   
-        rotateServo(&buttonServo, SERVO2_TARGET_POS, 2);
-        dataToSend.buttonState = SERVO_PUSH;
+        rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
+        dataToSend.lockerState = SERVO_PUSH;
         sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
         
@@ -244,6 +247,66 @@ static void hallSensorTask(void*)
   }
 }
 
+static void buttonTask(void*)
+{
+  while (true)
+  {
+    bool buttonValue = digitalRead(button_Pin);
+    lastButtonValue = buttonValue;
+    int openCloseCount = 0;
+    //Serial.printf("Button Value : %d\r\n", buttonValue);
+    ::vTaskDelay(pdMS_TO_TICKS(100));
+    // Pull-Up
+    if(buttonValue == 0)
+    {
+
+      // 놓을 때까지 지속 
+      while(!digitalRead(button_Pin))
+      {
+        Serial.println("Start While");
+        // 500ms 이상 눌렀을 때
+        if(openCloseCount++ > 5){
+
+          pressingButtonFlag = true;
+          Serial.println("Button Pressing");
+          if(dataToSend.servoState == SERVO_CLOSED)
+          {
+            dataToSend.servoState = SERVO_OPENED;
+          }
+          else if (dataToSend.servoState == SERVO_OPENED)
+          {
+            dataToSend.servoState = SERVO_CLOSED;
+          }
+
+          ::vTaskDelay(pdMS_TO_TICKS(500));
+          break;       
+        }
+        else
+        {
+          pressingButtonFlag = false;
+        }
+        ::vTaskDelay(pdMS_TO_TICKS(100));
+      }
+
+      if(pressingButtonFlag == false)
+      {
+        Serial.println("Button Pressed");
+        if(dataToSend.lockerState == SERVO_RELEASE)
+        {
+          dataToSend.lockerState = SERVO_PUSH;
+          ::vTaskDelay(pdMS_TO_TICKS(500));
+        }
+        else if (dataToSend.lockerState == SERVO_PUSH)
+        {
+          dataToSend.lockerState = SERVO_RELEASE;
+          ::vTaskDelay(pdMS_TO_TICKS(500));
+        }
+      }   
+
+    }
+  }
+}
+
 
 
 // Setup
@@ -254,9 +317,10 @@ FLASHMEM __attribute__((noinline)) void setup() {
 
     Wire.begin();
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
+    ::pinMode(button_Pin, arduino::INPUT_PULLUP);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
     gripperServo.attach(Servo_Pin);
-    buttonServo.attach(Servo2_Pin);
+    lockerServo.attach(Servo2_Pin);
     initPacket(&dataToSend);
 
     for (int i = 0; i < LED_COUNT; i++)
@@ -285,11 +349,12 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.println(PSTR("\r\nBooting FreeRTOS kernel " tskKERNEL_VERSION_NUMBER ". Built by gcc " __VERSION__ " (newlib " _NEWLIB_VERSION ") on " __DATE__ ". ***\r\n"));
 
     
-    ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
+    ::xTaskCreate(blink, "blink", 512, nullptr, 1, nullptr);
     //::xTaskCreate(tickTock, "tickTock", 128, nullptr, 1, nullptr);
-    ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 2, nullptr);
+    ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
     ::xTaskCreate(colorSensorTask, "ColorSensor", 8192, nullptr, 1, &colorSensorHandle);
     ::xTaskCreate(hallSensorTask, "hallSensorTask", 8192, nullptr, 1, &hallSensorHandle);
+    ::xTaskCreate(buttonTask, "ButtonTask", 1024, nullptr, 1, nullptr);
     //::xTaskCreate(stopSensorTask, "stopSensor", 8192, nullptr, 3, nullptr);
     ::Serial.println("setup(): starting scheduler...");
     ::Serial.flush(); // 단점 : UART 느림
@@ -349,8 +414,8 @@ void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
       }
       else
       {
-        //Serial.println("Button!");
-        pos = buttonPos;
+        //Serial.println("Locker!");
+        pos = lockerPos;
       }
 
       if (pos != targetPos)
@@ -395,7 +460,7 @@ void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
         else
         {
           //Serial.println("Button!");
-          buttonPos = pos;
+          lockerPos = pos;
         }
       }
 }
