@@ -71,6 +71,8 @@ uint8_t lockerPos = 0;
 bool lastButtonValue = true; // Pull-Up -> 1
 bool pressingButtonFlag = false;
 
+uint64_t systemCount = 0;
+
 TaskHandle_t colorSensorHandle;
 TaskHandle_t hallSensorHandle;
 bool flag = false;
@@ -90,6 +92,11 @@ void initPacket(PACKET* _packet);
 bool sendPacket(uint8_t* _data, size_t len);
 void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond);
 
+void openServo();
+void closeServo();
+void pushServo();
+void releaseServo();
+
 static void blink(void*) {
     while (true) {
         ::digitalWriteFast(arduino::LED_BUILTIN, arduino::LOW);
@@ -102,12 +109,13 @@ static void blink(void*) {
 
 static void tickTock(void*) {
     while (true) {
-        ::Serial.println("TICK");
-        HWSERIAL.println("HW : TICK");
-        ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
+        ::Serial.printf("Flow : %lu\r\n", systemCount++);
+        //::Serial.println("TICK");
+        //HWSERIAL.println("HW : TICK");
+        //::vTaskDelay(pdMS_TO_TICKS(serialInterval));
 
-        ::Serial.println("TOCK");
-        HWSERIAL.println("HW : TOCK");
+        //::Serial.println("TOCK");
+        //HWSERIAL.println("HW : TOCK");
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
     }
 }
@@ -122,47 +130,56 @@ static void uartTask(void* ){
 
       if(text == 'u')
       {
-        Serial.println("Servo2 UP");
-        rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
-        dataToSend.lockerState = SERVO_RELEASE;
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+        releaseServo();
+        // Serial.println("Servo2 UP");
+        // rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
+        // dataToSend.lockerState = SERVO_RELEASE;
+        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
       }
       else if (text == 'd')
       {
-        Serial.println("Servo2 DOWN");   
-        rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
-        dataToSend.lockerState = SERVO_PUSH;
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+        pushServo();
+
+        // Serial.println("Servo2 DOWN");   
+        // rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
+        // dataToSend.lockerState = SERVO_PUSH;
+        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
         
       }
       else if (text == 'o')
       {
-        rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
-        Serial.println("Servo Open");
-        dataToSend.servoState = SERVO_OPENED;
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+        openServo();
+
+        // rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
+        // Serial.println("========Servo Open========");
+        // dataToSend.servoState = SERVO_OPENED;
+        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
         
       }
       else if (text == 'c')
       {
-        rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
-        Serial.println("Servo Close");
-        dataToSend.servoState = SERVO_CLOSED;
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+        closeServo();
+
+        // rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
+        // Serial.println("========Servo Close========");
+        // dataToSend.servoState = SERVO_CLOSED;
+        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
         
       }
       else if (text == 'n')
       {
+        Serial.println("========Color On========");
         vTaskResume(colorSensorHandle);
         dataToSend.colorState = COLOR_ON;
       }
       else if (text == 'f')
       {
         vTaskSuspend(colorSensorHandle);
+        Serial.println("========Color Off========");
         dataToSend.colorState = COLOR_OFF;
         for (int i = 0; i < LED_COUNT; i++)
         {
@@ -171,14 +188,17 @@ static void uartTask(void* ){
       }
       else if (text == 'i')
       {
+        Serial.println("Send Packet");
         sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
       }
       else if (text == 's')
       {
+        Serial.println("========Start reading hallSensor========");
         vTaskResume(hallSensorHandle);
       }
       else if (text == 't')
       {
+        Serial.println("========Stop reading hallSensor========");
         vTaskSuspend(hallSensorHandle);
       }
       
@@ -271,13 +291,16 @@ static void buttonTask(void*)
           Serial.println("Button Pressing");
           if(dataToSend.servoState == SERVO_CLOSED)
           {
-            dataToSend.servoState = SERVO_OPENED;
-            Serial.println("Servo Open");
+            //dataToSend.servoState = SERVO_OPENED;
+            //Serial.println("Servo Open");
+            openServo();
+            
           }
           else if (dataToSend.servoState == SERVO_OPENED)
           {
-            dataToSend.servoState = SERVO_CLOSED;
-            Serial.println("Servo Close");
+            //dataToSend.servoState = SERVO_CLOSED;
+            //Serial.println("Servo Close");
+            closeServo(); 
           }
 
           ::vTaskDelay(pdMS_TO_TICKS(500));
@@ -295,14 +318,16 @@ static void buttonTask(void*)
         Serial.println("Button Pressed");
         if(dataToSend.lockerState == SERVO_RELEASE)
         {
-          dataToSend.lockerState = SERVO_PUSH;
-          Serial.println("Servo Push");
+          // dataToSend.lockerState = SERVO_PUSH;
+          // Serial.println("Servo Push");
+          pushServo();
           ::vTaskDelay(pdMS_TO_TICKS(100));
         }
         else if (dataToSend.lockerState == SERVO_PUSH)
         {
-          dataToSend.lockerState = SERVO_RELEASE;
-          Serial.println("Servo Release");
+          // dataToSend.lockerState = SERVO_RELEASE;
+          // Serial.println("Servo Release");
+          releaseServo();
           ::vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
@@ -322,7 +347,7 @@ static void buttonTask(void*)
 
 // Setup
 FLASHMEM __attribute__((noinline)) void setup() {
-    ::Serial.begin(115'200);
+    ::Serial.begin(115200);
     HWSERIAL.begin(115200);
     
 
@@ -336,20 +361,21 @@ FLASHMEM __attribute__((noinline)) void setup() {
 
     for (int i = 0; i < LED_COUNT; i++)
     {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 5);
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 10);
     }
 
     for (int i = 0; i < 10; i++)
     {
       if(tcs3430.begin())
       {
+        Serial.println("Begin tcs3430 ColorSensor");
         break;
       }
       Serial.println("Please check that the IIC device is properly connected");
-      delay(1000);
+      delay(500);
     }
-    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 10);
-    ::delay(1'000);
+    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 50);
+    ::delay(100);
 
     if (CrashReport) {
         ::Serial.print(CrashReport);
@@ -360,14 +386,15 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.println(PSTR("\r\nBooting FreeRTOS kernel " tskKERNEL_VERSION_NUMBER ". Built by gcc " __VERSION__ " (newlib " _NEWLIB_VERSION ") on " __DATE__ ". ***\r\n"));
 
     
-    ::xTaskCreate(blink, "blink", 512, nullptr, 1, nullptr);
-    //::xTaskCreate(tickTock, "tickTock", 128, nullptr, 1, nullptr);
+    ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
+    ::xTaskCreate(tickTock, "tickTock", 2048, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
-    ::xTaskCreate(colorSensorTask, "ColorSensor", 8192, nullptr, 1, &colorSensorHandle);
-    ::xTaskCreate(hallSensorTask, "hallSensorTask", 8192, nullptr, 1, &hallSensorHandle);
+    ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
+    ::xTaskCreate(hallSensorTask, "hallSensorTask", 1024, nullptr, 2, &hallSensorHandle);
     ::xTaskCreate(buttonTask, "ButtonTask", 1024, nullptr, 1, nullptr);
     //::xTaskCreate(stopSensorTask, "stopSensor", 8192, nullptr, 3, nullptr);
     ::Serial.println("setup(): starting scheduler...");
+    ::Serial.println("========Start Teensy Gripper========");
     ::Serial.flush(); // 단점 : UART 느림
 
     // if( xReturned == pdPASS)
@@ -381,10 +408,6 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::vTaskSuspend(hallSensorHandle);
     ::vTaskStartScheduler();
     
-    ::delay(1'000);
-    ::Serial.println("========Start Teensy Gripper========");
-    ::Serial.flush();
-  
 }
 
 
@@ -474,4 +497,41 @@ void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
           lockerPos = pos;
         }
       }
+}
+
+
+void openServo()
+{
+  rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
+  Serial.println("========Servo Open========");
+  dataToSend.servoState = SERVO_OPENED;
+  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+}
+
+void closeServo()
+{
+  rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
+  Serial.println("========Servo Close========");
+  dataToSend.servoState = SERVO_CLOSED;
+  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+}
+
+void pushServo()
+{
+  Serial.println("Servo2 DOWN");   
+  rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
+  dataToSend.lockerState = SERVO_PUSH;
+  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+}
+
+void releaseServo()
+{
+  Serial.println("Servo2 UP");
+  rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
+  dataToSend.lockerState = SERVO_RELEASE;
+  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
 }
