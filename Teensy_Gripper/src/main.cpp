@@ -36,17 +36,32 @@
 #define SERVO_RELEASE 0x00
 #define SERVO_PUSH    0x08
 
-const int Servo_Pin = 14;
-const int Servo2_Pin = 15;
+// Old One
+// const int Servo_Pin = 14;
+// const int Servo2_Pin = 15;
 
-const int singNeopixel_Pin = 16;
-const int ringNeopixel_Pin = 17;
+// const int singNeopixel_Pin = 16;
+// const int ringNeopixel_Pin = 17;
 
-const int SDA_Pin = 18;
-const int SCL_Pin = 19;
+// const int SDA_Pin = 18;
+// const int SCL_Pin = 19;
 
-const int hallSensor_Pin = 20;
-const int button_Pin = 21;
+// const int hallSensor_Pin = 20;
+// const int button_Pin = 21;
+
+
+const int Servo_Pin = 16;
+const int Servo2_Pin = 17;
+
+const int singNeopixel_Pin = 18;
+const int ringNeopixel_Pin = 19;
+
+const int SDA_Pin = 20;
+const int SCL_Pin = 21;
+
+const int hallSensor_Pin = 22;
+const int button_Pin = 23;
+
 
 const int blinkInterval =  300;
 const int serialInterval = 1000;
