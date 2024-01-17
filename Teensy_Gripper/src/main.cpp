@@ -289,6 +289,7 @@ static void buttonTask(void*)
     bool buttonValue = digitalRead(button_Pin);
     lastButtonValue = buttonValue;
     int openCloseCount = 0;
+
     //Serial.printf("Button Value : %d\r\n", buttonValue);
     //::vTaskDelay(pdMS_TO_TICKS(100));
     // Pull-Up
@@ -352,7 +353,7 @@ static void buttonTask(void*)
         Serial.println("Release your button");
         ::vTaskDelay(pdMS_TO_TICKS(100));
       }
-         
+
 
     }
   }
@@ -479,7 +480,7 @@ void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
             //gripperServo.write(i);
             _servo->write(i);
             pos = i;
-            //Serial.printf("Degree : %d\r\n", i);
+            Serial.printf("Up Degree : %d\r\n", i);
             //delay(millisecond);
             ::vTaskDelay(pdMS_TO_TICKS(millisecond));
           }  
@@ -491,7 +492,7 @@ void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
             //gripperServo.write(i);
             _servo->write(i);
             pos = i;
-            //Serial.printf("Degree : %d\r\n", i);
+            Serial.printf("Down Degree : %d\r\n", i);
             //delay(millisecond);
             ::vTaskDelay(pdMS_TO_TICKS(millisecond));
           }
