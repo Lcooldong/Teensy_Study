@@ -220,9 +220,15 @@ uint8_t* IntToHex(uint32_t _int, uint8_t _num, bool writable)
     //Serial.printf("TEMP Value : [%d] %6d = 0x%08x | 0x%04x \r\n", i, value >> (8*i), value >> (8*i), writeCount[ reverseLength - i]);
   }
 
-  target = hexArray;
+  for (int i = 0; i < length; i++)
+  {
+    *(target + i) = *(hexArray + i);
+  }
+  
 
-  return target;
+  // target = hexArray;
+
+  return (uint8_t*)target;
 }
 
 void printEEPROM(uint8_t _start, uint8_t _end)
