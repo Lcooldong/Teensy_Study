@@ -521,7 +521,7 @@ void openServo()
   rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
   Serial.println("========Servo Open========");
   dataToSend.servoState = SERVO_OPENED;
-  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
   stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
 }
 
@@ -530,7 +530,7 @@ void closeServo()
   rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
   Serial.println("========Servo Close========");
   dataToSend.servoState = SERVO_CLOSED;
-  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
   stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
 }
 
@@ -539,7 +539,7 @@ void pushServo()
   Serial.println("Servo2 DOWN");   
   rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
   dataToSend.lockerState = SERVO_PUSH;
-  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
   stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
 }
 
@@ -548,6 +548,6 @@ void releaseServo()
   Serial.println("Servo2 UP");
   rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
   dataToSend.lockerState = SERVO_RELEASE;
-  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
   stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
 }
