@@ -163,48 +163,21 @@ static void uartTask(void* ){
 
       char text = HWSERIAL.read();
       
-
       if(text == 'u')
       {
         releaseServo();
-        // Serial.println("Servo2 UP");
-        // rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
-        // dataToSend.lockerState = SERVO_RELEASE;
-        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
       }
       else if (text == 'd')
       {
-        pushServo();
-
-        // Serial.println("Servo2 DOWN");   
-        // rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
-        // dataToSend.lockerState = SERVO_PUSH;
-        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
-        
+        pushServo();      
       }
       else if (text == 'o')
       {
-        openServo();
-
-        // rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
-        // Serial.println("========Servo Open========");
-        // dataToSend.servoState = SERVO_OPENED;
-        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
-        
+        openServo();      
       }
       else if (text == 'c')
       {
         closeServo();
-
-        // rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
-        // Serial.println("========Servo Close========");
-        // dataToSend.servoState = SERVO_CLOSED;
-        // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-        // stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
-        
       }
       else if (text == 'n')
       {
