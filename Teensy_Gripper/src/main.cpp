@@ -1,137 +1,70 @@
+
 #include <Arduino.h>
 #include "arduino_freertos.h"
 #include "avr/pgmspace.h"
 
 #include <HardwareSerial.h>
-#include <DFRobot_TCS3430.h>
-#include <PWMServo.h>
-#include <LittleFS.h>
 
+#include <DFRobot_TCS3430.h>
 #include "neopixel.h"
 
-#define OLD_PINOUT
-//#define NEW_PINOUT
+//#define MYSERVO
+//#define MYLITTLEFS
+
+#ifdef MYLITTLEFS
+#include "MyLittleFS.h"
+#endif
+
+#ifdef MYSERVO
+#include "MyServo.h"
+#endif
+#include "config.h"
+
+
 
 //#undef configUSE_TIME_SLICING
 //#define configUSE_TIME_SLICING 1
 
-#define DEBUG
-#define HWSERIAL Serial2  // RX2 : 7, TX2 : 8
-
-#define SERVO_INITIAL_POS  0
-#define SERVO_TARGET_POS  70
-
-#define SERVO2_INITIAL_POS 10
-#define SERVO2_TARGET_POS 40
-
-#define COLOR_Y_MIN_VALUE 250
-#define COLOR_Y_MAX_VALUE 550
-
-#define HALL_MID_VALUE 600
-#define HALL_TARGET_VALUE 300
-
-#define HALL_FAR      0x00
-#define HALL_NEARBY   0x04
-#define HALL_ARRIVED  0x05
-#define SERVO_CLOSED  0x06
-#define SERVO_OPENED  0x00
-#define COLOR_ON      0x07
-#define COLOR_OFF     0x00
-#define SERVO_RELEASE 0x00
-#define SERVO_PUSH    0x08
-
-#define PROG_FLASH_SIZE 1024 * 900
-
-#ifdef OLD_PINOUT
-const int Servo_Pin = 14;
-const int Servo2_Pin = 15;
-
-const int singNeopixel_Pin = 16;
-const int ringNeopixel_Pin = 17;
-
-const int SDA_Pin = 18;
-const int SCL_Pin = 19;
-
-const int hallSensor_Pin = 20;
-const int button_Pin = 21;
-#endif
-
-#ifdef NEW_PINOUT
-const int Servo_Pin = 16;
-const int Servo2_Pin = 17;
-
-const int singNeopixel_Pin = 18;
-const int ringNeopixel_Pin = 19;
-
-const int SDA_Pin = 20;
-const int SCL_Pin = 21;
-
-const int hallSensor_Pin = 22;
-const int button_Pin = 23;
-#endif
-
-const int blinkInterval =  300;
-const int serialInterval = 1000;
-
-typedef struct __attribute__((packed)) packet
+extern "C"
 {
-  uint8_t stx;
-  uint8_t servoState;
-  uint8_t hallState;
-  uint8_t colorState;
-  uint8_t lockerState;
-  uint8_t etx;
-}PACKET;
+  int hallSensorValue = 0;
+  int hallCount = 0;
 
-PACKET dataToSend;
-PACKET buf;
+  bool lastButtonValue = true; // Pull-Up -> 1
+  bool pressingButtonFlag = false;
 
-int hallSensorValue = 0;
-int hallCount = 0;
-uint8_t gripperPos = 0;
-uint8_t lockerPos = 0;
-bool lastButtonValue = true; // Pull-Up -> 1
-bool pressingButtonFlag = false;
+  uint64_t systemCount = 0;
 
-uint64_t systemCount = 0;
+  TaskHandle_t colorSensorHandle;
+  TaskHandle_t hallSensorHandle;
+  bool colorTestFlag = false;
+  bool hallTestFlag = false;
 
-TaskHandle_t colorSensorHandle;
-TaskHandle_t hallSensorHandle;
-bool flag = false;
+  BaseType_t xReturned;
+  TaskHandle_t xHandle = NULL;
 
-BaseType_t xReturned;
-TaskHandle_t xHandle = NULL;
+  PACKET* dataToSend;
+}
 
-MyNeopixel* myNeopixel = new MyNeopixel(12, ringNeopixel_Pin);
-MyNeopixel* stateNeopixel = new MyNeopixel(1, singNeopixel_Pin);
-DFRobot_TCS3430 tcs3430;
-PWMServo gripperServo;
-PWMServo lockerServo;
 
-LittleFS_Program myfs;
-File dataFile;
-int record_count = 0;
-const char* datalogFile = "datalog.txt";
+
 
 void initPacket(PACKET* _packet);
 bool sendPacket(uint8_t* _data, size_t len);
-void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond);
-
-void openServo();
-void closeServo();
-void pushServo();
-void releaseServo();
 
 
-void eraseFiles();
-void initLittleFS();
-void listFiles();
-void printDirectory(FS &fs);
-void printDirectory(File dir, int numSpaces);
-void printSpaces(int num);
-void dumpLog(const char* _file);
-uint8_t writeServoLog();
-void loadLogData();
+#ifdef MYSERVO
+MyServo* myServo = new MyServo(dataToSend);
+#endif
+
+#include "MyLittleFS.h"
+MyLittleFS* myLittleFS = new MyLittleFS();
+#ifdef MYLITTLEFS
+MyLittleFS* myLittleFS = new MyLittleFS();
+#endif
+MyNeopixel* myNeopixel = new MyNeopixel(12, ringNeopixel_Pin);
+MyNeopixel* stateNeopixel = new MyNeopixel(1, singNeopixel_Pin);
+DFRobot_TCS3430 tcs3430;
 
 static void blink(void*) {
     while (true) {
@@ -165,31 +98,55 @@ static void uartTask(void* ){
       
       if(text == 'u')
       {
-        releaseServo();
+#ifdef MYSERVO
+        myServo->releaseServo();
+#endif
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
       }
       else if (text == 'd')
       {
-        pushServo();      
+#ifdef MYSERVO
+        myServo->pushServo();      
+#endif
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
       }
       else if (text == 'o')
       {
-        openServo();      
+#ifdef MYSERVO
+        myServo->openServo();
+#endif
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
       }
       else if (text == 'c')
       {
-        closeServo();
+#ifdef MYSERVO
+        myServo->closeServo();
+#endif
+        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
       }
       else if (text == 'n')
       {
         Serial.println("========Color On========");
         vTaskResume(colorSensorHandle);
-        dataToSend.colorState = COLOR_ON;
+        dataToSend->colorState = COLOR_ON;
       }
       else if (text == 'f')
       {
         vTaskSuspend(colorSensorHandle);
         Serial.println("========Color Off========");
-        dataToSend.colorState = COLOR_OFF;
+        dataToSend->colorState = COLOR_OFF;
         for (int i = 0; i < LED_COUNT; i++)
         {
             myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
@@ -209,7 +166,7 @@ static void uartTask(void* ){
       {
         Serial.println("========Stop reading hallSensor========");
         vTaskSuspend(hallSensorHandle);
-        dataToSend.hallState = HALL_FAR;
+        dataToSend->hallState = HALL_FAR;
       }
       
       
@@ -228,19 +185,79 @@ static void uartTask2(void*)
     switch (text)
     {
     case 'l':
-      listFiles();
+#ifdef MYLITTLEFS
+      myLittleFS->listFiles();
+#endif
       break;
     case 'd':
-      dumpLog("datalog.txt");
+#ifdef MYLITTLEFS
+      myLittleFS->dumpLog(myLittleFS->datalogFile);
+#endif
       break;
     case 'e':
-      eraseFiles();
+#ifdef MYLITTLEFS
+        myLittleFS->eraseFiles();
+#endif
       break;
     case '1':
-      closeServo();
+#ifdef MYSERVO
+      myServo->closeServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+      stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
       break;
     case '2':
-      openServo();
+#ifdef MYSERVO
+      myServo->openServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+      stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+      break;
+    case '3':
+#ifdef MYSERVO
+      myServo->pushServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+      stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+      break;
+    case '4':
+#ifdef MYSERVO
+      myServo->releaseServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+      stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+      break;
+    case '5':
+      if(!hallTestFlag)
+      {
+        vTaskResume(hallSensorHandle);
+      }
+      else
+      {
+        vTaskSuspend(hallSensorHandle);
+      }
+      
+      hallTestFlag = !hallTestFlag;
+      break;
+    case '6':
+      if(!colorTestFlag)
+      {
+        vTaskResume(colorSensorHandle);
+      }
+      else
+      {
+        vTaskSuspend(colorSensorHandle);
+      }
+
+      colorTestFlag = !colorTestFlag;
       break;
     case '\r': 
     case '\n':
@@ -295,17 +312,17 @@ static void hallSensorTask(void*)
       if(hallCount > 10)
       {
         //Serial.println("Arrived at Target Height");
-        dataToSend.hallState = HALL_ARRIVED;
+        dataToSend->hallState = HALL_ARRIVED;
       }   
     }
     else if(hallSensorValue <= HALL_MID_VALUE)
     {
-      dataToSend.hallState = HALL_NEARBY;
+      dataToSend->hallState = HALL_NEARBY;
     }
     else    
     {
       hallCount = 0;
-      dataToSend.hallState = HALL_FAR;
+      dataToSend->hallState = HALL_FAR;
     }
     
     ::vTaskDelay(pdMS_TO_TICKS(20));
@@ -335,18 +352,31 @@ static void buttonTask(void*)
 
           pressingButtonFlag = true;
           Serial.println("Button Pressing");
-          if(dataToSend.servoState == SERVO_CLOSED)
+          if(dataToSend->servoState == SERVO_CLOSED)
           {
             //dataToSend.servoState = SERVO_OPENED;
             //Serial.println("Servo Open");
-            openServo();
+#ifdef MYSERVO
+            myServo->openServo();
+#endif
+#ifdef MYLITTLEFS
+            myLittleFS->writeServoLog();
+#endif
+            
+            stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
             
           }
-          else if (dataToSend.servoState == SERVO_OPENED)
+          else if (dataToSend->servoState == SERVO_OPENED)
           {
             //dataToSend.servoState = SERVO_CLOSED;
             //Serial.println("Servo Close");
-            closeServo(); 
+#ifdef MYSERVO
+            myServo->closeServo(); 
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+            stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
           }
 
           ::vTaskDelay(pdMS_TO_TICKS(500));
@@ -362,18 +392,30 @@ static void buttonTask(void*)
       if(pressingButtonFlag == false)
       {
         Serial.println("Button Pressed");
-        if(dataToSend.lockerState == SERVO_RELEASE)
+        if(dataToSend->lockerState == SERVO_RELEASE)
         {
           // dataToSend.lockerState = SERVO_PUSH;
           // Serial.println("Servo Push");
-          pushServo();
+#ifdef MYSERVO
+          myServo->pushServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
           ::vTaskDelay(pdMS_TO_TICKS(100));
         }
-        else if (dataToSend.lockerState == SERVO_PUSH)
+        else if (dataToSend->lockerState == SERVO_PUSH)
         {
           // dataToSend.lockerState = SERVO_RELEASE;
           // Serial.println("Servo Release");
-          releaseServo();
+#ifdef MYSERVO
+          myServo->releaseServo();
+#endif
+#ifdef MYLITTLEFS
+        myLittleFS->writeServoLog();
+#endif
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
           ::vTaskDelay(pdMS_TO_TICKS(100));
         }
       }
@@ -400,11 +442,10 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::pinMode(button_Pin, arduino::INPUT_PULLUP);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
-    gripperServo.attach(Servo_Pin);
-    lockerServo.attach(Servo2_Pin);
-    initPacket(&dataToSend);
+    
+    initPacket(dataToSend);
 
-    // initLittleFS();
+    //myLittleFS->initLittleFS();
 
     for (int i = 0; i < LED_COUNT; i++)
     {
@@ -424,7 +465,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 50);
     ::delay(100);
 
-    initLittleFS();
+    myLittleFS->initLittleFS();
 
     if (CrashReport) {
         ::Serial.print(CrashReport);
@@ -486,250 +527,5 @@ bool sendPacket(uint8_t* _data, size_t len)
   return true;
 }
 
-void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
-{     
-      int pos;
-      //delay(5);
-
-      if(_servo == &gripperServo)
-      {
-        //Serial.println("Gripper!");
-        pos = gripperPos;
-      }
-      else
-      {
-        //Serial.println("Locker!");
-        pos = lockerPos;
-      }
-
-      if (pos != targetPos)
-      {
-        //Serial.print("Servo Rotate Start\r\n");
-
-        if(pos < targetPos)
-        {
-          
-          for (int i = 0; i <= targetPos; i++)
-          {
-            //gripperServo.write(i);
-            _servo->write(i);
-            pos = i;
-            Serial.printf("Up Degree : %d\r\n", i);
-            //delay(millisecond);
-            ::vTaskDelay(pdMS_TO_TICKS(millisecond));
-          }  
-        }
-        else if (pos > targetPos)
-        {
-          for (int i = pos; i >= targetPos; i--)
-          {
-            //gripperServo.write(i);
-            _servo->write(i);
-            pos = i;
-            Serial.printf("Down Degree : %d\r\n", i);
-            //delay(millisecond);
-            ::vTaskDelay(pdMS_TO_TICKS(millisecond));
-          }
-        }
-        //digitalWrite(Servo_Pin, arduino::LOW);      // 끄기
-        //Serial.printf("Servo Rotated\r\n");
-        //_servo->detach();
-        //delay(5);
-        if(_servo == &gripperServo)
-        {
-          //Serial.println("Gripper!");
-          gripperPos = pos;
-        }
-        else
-        {
-          //Serial.println("Button!");
-          lockerPos = pos;
-        }
-
-      }
-}
 
 
-void openServo()
-{
-  rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
-  Serial.println("========Servo Open========");
-  dataToSend.servoState = SERVO_OPENED;
-  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
-  gripperPos = writeServoLog();
-}
-
-void closeServo()
-{
-  rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
-  Serial.println("========Servo Close========");
-  dataToSend.servoState = SERVO_CLOSED;
-  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
-  gripperPos = writeServoLog();
-}
-
-void pushServo()
-{
-  Serial.println("Servo2 DOWN");   
-  rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
-  dataToSend.lockerState = SERVO_PUSH;
-  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
-}
-
-void releaseServo()
-{
-  Serial.println("Servo2 UP");
-  rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
-  dataToSend.lockerState = SERVO_RELEASE;
-  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-  stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
-}
-
-void initLittleFS()
-{
-  if (!myfs.begin(PROG_FLASH_SIZE)) {
-    Serial.printf("Error starting %s\n", "PROGRAM FLASH DISK");
-    while (1) {
-      Serial.printf("Failed to Mount \r\n");
-      delay(500);
-    }
-  }
-  Serial.println("LittleFS initialized.");
-  listFiles();
-
-  loadLogData();
-}
-
-void eraseFiles()
-{
-  myfs.quickFormat();  // performs a quick format of the created di
-  Serial.println("\nFiles erased !");
-}
-
-void listFiles()
-{
-  Serial.print("\nSpace Used = ");
-  Serial.println(myfs.usedSize());
-  Serial.print("Filesystem Size = ");
-  Serial.println(myfs.totalSize());
-
-  printDirectory(myfs);
-}
-
-void printDirectory(FS &fs) {
-  Serial.println("Directory\n---------");
-  printDirectory(fs.open("/"), 0);
-  Serial.println();
-}
-
-void printDirectory(File dir, int numSpaces) {
-   while(true) {
-     File entry = dir.openNextFile(); // 다음 파일 열기
-     if (! entry) {
-       //Serial.println("** no more files **");
-       break;   // 더 이상 파일이 없으면 나오기
-     }
-     printSpaces(numSpaces);
-     Serial.print(entry.name());  // 파일 이름
-     if (entry.isDirectory()) {   // 디렉토리이면 / 추가
-       Serial.println("/");
-       printDirectory(entry, numSpaces+2);
-     } else {
-       // files have sizes, directories do not
-       printSpaces(36 - numSpaces - strlen(entry.name()));  
-       Serial.print("  ");
-       Serial.println(entry.size(), arduino::DEC);   // 파일 크기
-     }
-     entry.close(); // 파일 종료
-   }
-}
-
-void printSpaces(int num) {
-  for (int i=0; i < num; i++) {
-    Serial.print(" ");
-  }
-}
-
-void dumpLog(const char* _file)
-{
-  Serial.println("\nDumping Log!!!");
-  // open the file.
-  dataFile = myfs.open(_file);
-
-  // if the file is available, write to it:
-  if (dataFile) {
-    while (dataFile.available()) {
-      Serial.write(dataFile.read());
-      
-    }
-    dataFile.close();
-  }  
-  // if the file isn't open, pop up an error:
-  else {
-    Serial.println("error opening datalog.txt");
-  } 
-}
-
-uint8_t writeServoLog() 
-{
-  int value = gripperPos;
-
-  myfs.remove(datalogFile);
-
-  dataFile = myfs.open(datalogFile, FILE_WRITE);
-  
-  
-
-  String dataString = "";
-  dataString = "Gripper:" + String(gripperPos); 
-
-  if(dataFile)
-  {
-    dataFile.println(dataString);
-  }
-  else
-  {
-    Serial.println("error opening datalog.txt");
-  }
-
-  dataFile.close();
-  delay(50);
-
-  return value;
-}
-
-void loadLogData()
-{
-  dataFile = myfs.open(datalogFile);
-
-  String readData;
-
-  if(dataFile)
-  {
-    while(dataFile.available())
-    {
-      readData = dataFile.readStringUntil('\n');
-      if(readData.startsWith("Gripper:"))
-      {
-        Serial.print(readData);
-        gripperPos = readData.substring(readData.indexOf(':')+1, readData.length()).toInt();
-        if(gripperPos == 70)
-        {
-          dataToSend.servoState = SERVO_CLOSED;
-        }
-        else if (gripperPos == 0)
-        {
-          dataToSend.servoState = SERVO_OPENED;
-        }
-      }
-    }
-    dataFile.close();
-  }
-  else
-  {
-    Serial.println("error opening datalog.txt");
-  }
-}
