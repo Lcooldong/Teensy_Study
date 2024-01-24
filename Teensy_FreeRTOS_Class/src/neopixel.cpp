@@ -1,4 +1,4 @@
-// #include "Adafruit_NeoPixel.h"
+#include "Adafruit_NeoPixel.h"
 #include "neopixel.h"
 
 //Adafruit_NeoPixel strip;

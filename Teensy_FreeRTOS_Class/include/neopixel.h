@@ -1,11 +1,11 @@
 #ifndef NEOPIXEL_H
 #define NEOPIXEL_H
 
-// #include <Arduino.h>
+#include <Arduino.h>
 #include "Adafruit_NeoPixel.h"
 
-#define LED_COUNT 12
-#define LED_PIN 17
+#define LED_COUNT 1
+#define LED_PIN 2
 
 class MyNeopixel{
 

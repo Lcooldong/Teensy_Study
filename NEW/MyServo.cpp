@@ -1,18 +1,10 @@
-#include "myServo.h"
+#include "MyServo.h"
+#include <Arduino.h>
 #include "arduino_freertos.h"
+#include "avr/pgmspace.h"
+#include "config.h"
 
-extern PACKET dataToSend;
-
-MyServo::MyServo(/* args */)
-{
-  gripperPos = SERVO_INITIAL_POS;
-  lockerPos = SERVO2_INITIAL_POS;
-}
-
-MyServo::~MyServo()
-{
-}
-
+extern PACKET* dataToSend;
 
 void MyServo::initServo()
 {
@@ -88,7 +80,7 @@ void MyServo::openServo()
 {
   rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
   Serial.println("========Servo Open========");
-  dataToSend.servoState = SERVO_OPENED;
+  dataToSend->servoState = SERVO_OPENED;
   //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
 }
 
@@ -96,19 +88,19 @@ void MyServo::closeServo()
 {
   rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
   Serial.println("========Servo Close========");
-  dataToSend.servoState = SERVO_CLOSED; 
+  dataToSend->servoState = SERVO_CLOSED; 
 }
 
 void MyServo::pushServo()
 {
   Serial.println("Servo2 DOWN");   
   rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
-  dataToSend.lockerState = SERVO_PUSH; 
+  dataToSend->lockerState = SERVO_PUSH; 
 }
 
 void MyServo::releaseServo()
 {
   Serial.println("Servo2 UP");
   rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
-  dataToSend.lockerState = SERVO_RELEASE;
+  dataToSend->lockerState = SERVO_RELEASE;
 }

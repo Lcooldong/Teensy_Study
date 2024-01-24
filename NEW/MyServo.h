@@ -1,16 +1,19 @@
 #ifndef __MYSERVO_H__
 #define __MYSERVO_H__
 
+
 #include <PWMServo.h>
-#include "config.h"
+
+
 
 class MyServo
 {
 private:
     PWMServo gripperServo;
     PWMServo lockerServo;
+
 public:
-    MyServo(/* args */);
+    MyServo();
     ~MyServo();
 
     uint8_t gripperPos;
@@ -24,6 +27,13 @@ public:
     void releaseServo();
 };
 
+MyServo::MyServo()
+{
+   
+}
 
+MyServo::~MyServo()
+{
+}
 
 #endif

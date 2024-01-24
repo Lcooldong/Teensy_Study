@@ -14,6 +14,8 @@ public:
     MyLittleFS(/* args */);
     ~MyLittleFS();
 
+    
+
     File dataFile;
     int record_count = 0;
     const char* datalogFile = "datalog.txt";
@@ -29,6 +31,14 @@ public:
     void loadLogData();
 };
 
+MyLittleFS::MyLittleFS(/* args */)
+{
+    
+}
+
+MyLittleFS::~MyLittleFS()
+{
+}
 
 
 #endif
