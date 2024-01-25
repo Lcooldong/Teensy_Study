@@ -40,6 +40,9 @@ void initPacket(PACKET* _packet);
 bool sendPacket(uint8_t* _data, size_t len);
 void toggleHallSensor(ToggleFlag _toggleFlag);
 void toggleColorSensor(ToggleFlag _toggleFlag);
+uint8_t* readString(uint32_t bufferSize);
+uint8_t* ascii_to_hex( uint8_t* _string, uint8_t _size);
+unsigned int ascii_to_hex2(const char* str, size_t size, uint8_t* hex);
 
 #ifdef MYSERVO
 MyServo* myServo = new MyServo();
@@ -69,64 +72,128 @@ static void tickTock(void*) {
     }
 }
 
-int textCount = 0;
+
 String text = "";
+uint8_t* receivedText = nullptr;
+uint8_t* structArray = nullptr;
 
+uint8_t hex[64] ={0,};
 
-uint8_t* readString()
-{
-  char buffer[20];
-  int length = HWSERIAL.readBytesUntil('\r', buffer, sizeof(buffer)); // \n전까지 읽음 hello\n 우면 5개 hello 만 읽음
-  if(length > 0)
-  {
-    Serial.printf("length : %d\r\n", length);
-    for (int i = 0; i < length; i++)
-    {
-      if(buffer[i] != '\0')
-      {
-        Serial.printf("%c", buffer[i]);
-      }
-      else
-      {
-        Serial.println("NULL");
-      }
-    }
-  }
-
-  return (uint8_t*)buffer;  // 이쪽 한번 더 봐야함
-}
 
 static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
+      receivedText = readString(64);
+      
+      String charToString = (char*)receivedText;
+      
+      
+      if(charToString.length() > 0)
+      {
+        int length = charToString.length() - 1;
+        Serial.printf("String Length : %d\r\n", length );
+        ascii_to_hex2(charToString.c_str(), length, hex);  // \n 포함되어있기에 - 1
 
-      // char ch = (char)HWSERIAL.read();
+        // for (int i = 0; i < length/2; i++)
+        // {
+        //   Serial.printf("[%d] 0x%02x\r\n", i,hex[i]);
+        // }
+
+        if(hex[0] == 0x02)
+        {
+          Serial.println("Start");
+        }
+        
+        for (int i = 1; i < length/2 - 1; i++)
+        {
+          Serial.printf("[%d] 0x%02x\r\n", i, hex[i]);
+        }  
+
+
+        if(hex[length/2 - 1] == 0x03)
+        {
+          Serial.println("END");
+        }
+        
+        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+      }
+
+      // structArray = new uint8_t[sizeof(dataToSend)];
+      // structArray = ascii_to_hex(receivedText, charToString.length() - 1);
+      // if(charToString.length() > 0)
+      // {
+      //   Serial.printf("String Length : %d\r\n", charToString.length() );
+
+      //   for (uint8_t i = 0; i < sizeof(dataToSend); i++)
+      //   {
+      //     Serial.printf("0x%0x\r\n", structArray[i]);
+      //   }
+
+      //   Serial.println("-----------------------");
+      // }
       
       
+      // String hexString = "";
+      
+      // uint8_t v ;
+      // if(charToString.length() > 0)
+      // {
+      //   for (uint8_t i = 0; i < sizeof(dataToSend) * 2; i++)
+      //   {
+          
+      //     // hexString += String(receivedText[i]);
+      //     // Serial.printf("%s\r\n", hexString);
+      //     if(i % 2 == 0)
+      //     {
+      //       hexString = "";
+      //       v = receivedText[i] << 4;
+      //       Serial.printf("[000] - %d\r\n", v);
+      //     }
+      //     else if (i % 2 == 1)
+      //     {
+      //       v += receivedText[i];
+            
+      //       // Serial.printf("HEX : 0x%02x\r\n", v);
+      //       Serial.printf("[111] - %d\r\n", v);
+      //       // Serial.printf("[%d] [ARRAY %d ]- %s\r\n", i, i / 2, hexString); 
+      //       // structArray[i/2] = hexString.toInt();    
+      //     }         
+      //     // Serial.printf("Data : %c \r\n", receivedText[i]);
+      //   }
+      // }
+      
+      
+      // char ch = HWSERIAL.read();
+      
+      // if(ch == 0x02)
+      // {
+      //   int textCount = 0;
+      //   while (true)
+      //   {
+      //     char packetByte = HWSERIAL.read();
+      //     if(packetByte != 0xFF)  
+      //     {
+            
+      //       Serial.printf("Input character[%d] : %c\r\n", textCount++, ch); // String -> Hex
+      //     }
+      //     else if(packetByte == 0x03)
+      //     {
+      //       textCount = 0;
+      //       break;
+      //     }
+      //   }
+      // }
+      // else
+      // {
+        
+      // }
+      // vTaskDelay(pdMS_TO_TICKS(100));
       // String s = HWSERIAL.readStringUntil('\n');
       // if(s.length() > 0)
       // {
       //   Serial.printf("Received Text : %s\r\n",s);
       // }
       
-      
-      
-      // Serial.printf("TEXT [%d] : %c\r\n", textCount++, ch);
-      
-      // if((int)ch != 10)
-      // {
-      //   text += ch;
-      // }
-      // else
-      // {
-      //   Serial.printf("Received Text : %s\r\n",text);
-      //   text = "";
-      // }
-      // if(text)
-      // {
-      //   Serial.printf("TEXT [%d] : %c\r\n", textCount++, text);
-        
-      // }
       // while(HWSERIAL.read() != -1);
     // String context = HWSERIAL.readStringUntil('\n');
     // if(context.length() > 0)
@@ -539,7 +606,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
 
     
     ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
-    ::xTaskCreate(tickTock, "tickTock", 2048, nullptr, 1, nullptr);
+    // ::xTaskCreate(tickTock, "tickTock", 1024, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask2, "uartTask2", 8192, nullptr, 1, nullptr);
     ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
@@ -621,4 +688,67 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
 }
 
 
+uint8_t* readString(uint32_t _bufferSize)
+{
+  uint8_t* buffer = nullptr;
 
+  buffer = new uint8_t[_bufferSize];
+  int length = HWSERIAL.readBytesUntil('\r', buffer, _bufferSize); // \n전까지 읽음 hello\n 우면 5개 hello 만 읽음
+  if(length > 0)
+  {
+    Serial.printf("length : %d\r\n", length);
+    for (int i = 0; i < length; i++)
+    {
+      if(buffer[i] != '\0')
+      {
+        Serial.printf("%c", buffer[i]);
+      }
+      else
+      {
+        Serial.println("NULL");
+      }
+    }
+  }
+
+  return buffer;  // 이쪽 한번 더 봐야함
+}
+
+uint8_t* ascii_to_hex( uint8_t* _string, uint8_t _size)
+{
+  uint8_t* hexArray = nullptr;
+  hexArray = new uint8_t[_size/2];
+  uint8_t highBit, lowBit;
+
+  for (uint8_t i = 0; i < _size; i++)
+  {
+    if(i % 2 == 0)
+    {
+      highBit = (_string[i] > '9') ? _string[i] - 'A' + 10 : _string[i] - '0';
+
+    }
+    else
+    {
+      lowBit = (_string[i + 1] > '9') ? _string[i + 1] - 'A' + 10 : _string[i + 1] - '0';
+    }
+    hexArray[_size/2] = (highBit << 4) | lowBit;
+    
+  }
+  
+
+  return hexArray;
+}
+
+unsigned int ascii_to_hex2(const char* str, size_t size, uint8_t* hex)
+{
+    unsigned int i, h, high, low;
+    for (h = 0, i = 0; i < size; i += 2, ++h) {
+        //9보다 큰 경우 : 알파벳 문자 'A' 이상인 문자로, 'A'를 빼고 10을 더함.
+        //9이하인 경우 : 숫자 입력으로 '0'을 빼면 실제 값이 구해짐.
+        high = (str[i] > '9') ? str[i] - 'A' + 10 : str[i] - '0';
+        low = (str[i + 1] > '9') ? str[i + 1] - 'A' + 10 : str[i + 1] - '0';
+        //high 4비트, low 4비트이므로, 1바이트를 만들어주기 위해 high를 왼쪽으로 4비트 shift
+        //이후 OR(|)연산으로 합
+        hex[h] = (high << 4) | low;
+    }
+    return h;
+}
