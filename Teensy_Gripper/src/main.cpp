@@ -69,19 +69,78 @@ static void tickTock(void*) {
     }
 }
 
+int textCount = 0;
+String text = "";
+
+
+uint8_t* readString()
+{
+  char buffer[20];
+  int length = HWSERIAL.readBytesUntil('\r', buffer, sizeof(buffer)); // \n전까지 읽음 hello\n 우면 5개 hello 만 읽음
+  if(length > 0)
+  {
+    Serial.printf("length : %d\r\n", length);
+    for (int i = 0; i < length; i++)
+    {
+      if(buffer[i] != '\0')
+      {
+        Serial.printf("%c", buffer[i]);
+      }
+      else
+      {
+        Serial.println("NULL");
+      }
+    }
+  }
+
+  return (uint8_t*)buffer;  // 이쪽 한번 더 봐야함
+}
 
 static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
 
-      // char text = HWSERIAL.read();
-    String context = HWSERIAL.readString();
-    if(context.length() > 0)
-    {
-      char* array;
-      context.toCharArray(array, context.length());
-      Serial.printf("Received : %s\r\n" , context);
-    }
+      // char ch = (char)HWSERIAL.read();
+      
+      
+      // String s = HWSERIAL.readStringUntil('\n');
+      // if(s.length() > 0)
+      // {
+      //   Serial.printf("Received Text : %s\r\n",s);
+      // }
+      
+      
+      
+      // Serial.printf("TEXT [%d] : %c\r\n", textCount++, ch);
+      
+      // if((int)ch != 10)
+      // {
+      //   text += ch;
+      // }
+      // else
+      // {
+      //   Serial.printf("Received Text : %s\r\n",text);
+      //   text = "";
+      // }
+      // if(text)
+      // {
+      //   Serial.printf("TEXT [%d] : %c\r\n", textCount++, text);
+        
+      // }
+      // while(HWSERIAL.read() != -1);
+    // String context = HWSERIAL.readStringUntil('\n');
+    // if(context.length() > 0)
+    // {
+    //   char* array = nullptr;
+    //   context.toCharArray(array, context.length());
+    //   Serial.printf("Received : %s\r\n" , context);
+    //   for (uint32_t i = 0; i < context.length(); i++)
+    //   {
+    //     Serial.printf("Input Value : 0x%02X", array[i]);
+    //   }
+    //   Serial.println();
+      
+    // }
 //       int packetCount = 0;
 //       if(text == (char)0x02)
 //       {
@@ -452,7 +511,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
         myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 10);
     }
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 5; i++)
     {
       if(tcs3430.begin())
       {
