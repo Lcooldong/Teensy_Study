@@ -78,6 +78,8 @@ static void uartTask(void* ){
     String context = HWSERIAL.readString();
     if(context.length() > 0)
     {
+      char* array;
+      context.toCharArray(array, context.length());
       Serial.printf("Received : %s\r\n" , context);
     }
 //       int packetCount = 0;
@@ -558,4 +560,6 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
     dataToSend.colorState = COLOR_OFF;
   }
 }
+
+
 
