@@ -18,6 +18,7 @@ PACKET dataToSend;
 //#define configUSE_TIME_SLICING 1
 
 
+
 int hallSensorValue = 0;
 int hallCount = 0;
 
@@ -37,8 +38,8 @@ TaskHandle_t xHandle = NULL;
 
 void initPacket(PACKET* _packet);
 bool sendPacket(uint8_t* _data, size_t len);
-
-
+void toggleHallSensor(ToggleFlag _toggleFlag);
+void toggleColorSensor(ToggleFlag _toggleFlag);
 
 #ifdef MYSERVO
 MyServo* myServo = new MyServo();
@@ -73,80 +74,98 @@ static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
 
-      char text = HWSERIAL.read();
+      // char text = HWSERIAL.read();
+    String context = HWSERIAL.readString();
+    if(context.length() > 0)
+    {
+      Serial.printf("Received : %s\r\n" , context);
+    }
+//       int packetCount = 0;
+//       if(text == (char)0x02)
+//       {
+//         while (true)
+//         {
+//           packetCount++;
+//           char packetData = HWSERIAL.parseInt();
+//           Serial.printf("packet : %c\r\n", packetData);  
+//           if(packetData == (char)0x03 || packetCount == sizeof(dataToSend)/sizeof(uint8_t))
+//           {
+//             Serial.println("End of Packet");
+//             break;
+//           }
+//         } 
+//       }
       
-      if(text == 'u')
-      {
-#ifdef MYSERVO
-        myServo->releaseServo();
-#endif
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
-#endif
-      }
-      else if (text == 'd')
-      {
-#ifdef MYSERVO
-        myServo->pushServo();      
-#endif
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
-#endif
-      }
-      else if (text == 'o')
-      {
-#ifdef MYSERVO
-        myServo->openServo();
-#endif
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
-#endif
-      }
-      else if (text == 'c')
-      {
-#ifdef MYSERVO
-        myServo->closeServo();
-#endif
-        stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
-#endif
-      }
-      else if (text == 'n')
-      {
-        Serial.println("========Color On========");
-        vTaskResume(colorSensorHandle);
-        dataToSend.colorState = COLOR_ON;
-      }
-      else if (text == 'f')
-      {
-        vTaskSuspend(colorSensorHandle);
-        Serial.println("========Color Off========");
-        dataToSend.colorState = COLOR_OFF;
-        for (int i = 0; i < LED_COUNT; i++)
-        {
-            myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
-        }
-      }
-      else if (text == 'i')
-      {
-        Serial.println("Send Packet");
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-      }
-      else if (text == 's')
-      {
-        Serial.println("========Start reading hallSensor========");
-        vTaskResume(hallSensorHandle);
-      }
-      else if (text == 't')
-      {
-        Serial.println("========Stop reading hallSensor========");
-        vTaskSuspend(hallSensorHandle);
-        dataToSend.hallState = HALL_FAR;
-      }
+//       if(text == 'u')
+//       {
+// #ifdef MYSERVO
+//         myServo->releaseServo();
+// #endif
+//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+// #ifdef MYLITTLEFS
+//         myLittleFS->writeServoLog();
+// #endif
+//       }
+//       else if (text == 'd')
+//       {
+// #ifdef MYSERVO
+//         myServo->pushServo();      
+// #endif
+//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+// #ifdef MYLITTLEFS
+//         myLittleFS->writeServoLog();
+// #endif
+//       }
+//       else if (text == 'o')
+//       {
+// #ifdef MYSERVO
+//         myServo->openServo();
+// #endif
+//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+// #ifdef MYLITTLEFS
+//         myLittleFS->writeServoLog();
+// #endif
+//       }
+//       else if (text == 'c')
+//       {
+// #ifdef MYSERVO
+//         myServo->closeServo();
+// #endif
+//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+// #ifdef MYLITTLEFS
+//         myLittleFS->writeServoLog();
+// #endif
+//       }
+//       else if (text == 'n')
+//       {
+//         Serial.println("========Color On========");
+//         toggleColorSensor(ON);
+//       }
+//       else if (text == 'f')
+//       {
+//         Serial.println("========Color Off========");
+//         toggleColorSensor(OFF);
+        
+//         for (int i = 0; i < LED_COUNT; i++)
+//         {
+//             myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
+//         }
+//       }
+//       else if (text == 'i')
+//       {
+//         Serial.println("Send Packet");
+//         sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+//       }
+//       else if (text == 's')
+//       {
+//         Serial.println("========Start reading hallSensor========");
+//         toggleHallSensor(ON);
+//       }
+//       else if (text == 't')
+//       {
+//         Serial.println("========Stop reading hallSensor========");
+//         toggleHallSensor(OFF);
+//       }
       
       
       //vTaskDelay(pdMS_TO_TICKS(1));
@@ -217,11 +236,11 @@ static void uartTask2(void*)
     case '5':
       if(!hallTestFlag)
       {
-        vTaskResume(hallSensorHandle);
+        toggleHallSensor(ON);
       }
       else
       {
-        vTaskSuspend(hallSensorHandle);
+        toggleHallSensor(OFF);
       }
       
       hallTestFlag = !hallTestFlag;
@@ -229,11 +248,11 @@ static void uartTask2(void*)
     case '6':
       if(!colorTestFlag)
       {
-        vTaskResume(colorSensorHandle);
+        toggleColorSensor(ON);
       }
       else
       {
-        vTaskSuspend(colorSensorHandle);
+        toggleColorSensor(OFF);
       }
 
       colorTestFlag = !colorTestFlag;
@@ -512,5 +531,31 @@ bool sendPacket(uint8_t* _data, size_t len)
   return true;
 }
 
+void toggleHallSensor(ToggleFlag _toggleFlag)
+{ 
+  if(_toggleFlag == ON)
+  {
+    vTaskResume(hallSensorHandle);
 
+  }
+  else
+  {
+    vTaskSuspend(hallSensorHandle);
+    dataToSend.hallState = HALL_FAR;
+  }
+}
+
+void toggleColorSensor(ToggleFlag _toggleFlag)
+{
+  if(_toggleFlag == ON)
+  {
+    vTaskResume(colorSensorHandle);
+    dataToSend.colorState = COLOR_ON;
+  }
+  else
+  {
+    vTaskSuspend(colorSensorHandle);
+    dataToSend.colorState = COLOR_OFF;
+  }
+}
 

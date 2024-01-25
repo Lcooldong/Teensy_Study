@@ -1,9 +1,10 @@
-#include "myLittleFS.h"
-#include "myServo.h"
+#include "MyLittleFS.h"
+#include "MyServo.h"
 #include "arduino_freertos.h"
 
 extern PACKET dataToSend;
 extern MyServo* myServo;
+
 
 MyLittleFS::MyLittleFS(/* args */)
 {

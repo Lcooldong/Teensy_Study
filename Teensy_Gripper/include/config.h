@@ -13,9 +13,9 @@
 #define HALL_MID_VALUE    600
 #define HALL_TARGET_VALUE 300
 
-#define HALL_FAR      0xF1
-#define HALL_NEARBY   0x04
-#define HALL_ARRIVED  0x05
+// #define HALL_FAR      0xF1
+// #define HALL_NEARBY   0x04
+// #define HALL_ARRIVED  0x05
 
 
 
@@ -74,9 +74,22 @@ typedef struct __attribute__((packed)) packet
   uint8_t hallState;
   uint8_t colorState;
   uint8_t lockerState;
+  uint8_t checksum;
   uint8_t etx;
 }PACKET;
 
+typedef enum Hall_State
+{
+  HALL_FAR     = 0xF1,
+  HALL_NEARBY  = 0x04,
+  HALL_ARRIVED = 0x05
+}HALL_STATE;
 
+
+typedef enum ToggleFlag
+{
+  OFF = 0x00,
+  ON  = 0x01
+}TOGGLE_FLAG;
 
 #endif
