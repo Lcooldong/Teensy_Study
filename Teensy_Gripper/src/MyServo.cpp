@@ -91,6 +91,7 @@ void MyServo::openServo()
   rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
   Serial.println("========Servo Open========");
   dataToSend.servoState = SERVO_OPENED;
+  myLittleFS->writeServoLog();
   //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
 }
 
@@ -98,14 +99,16 @@ void MyServo::closeServo()
 {
   rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
   Serial.println("========Servo Close========");
-  dataToSend.servoState = SERVO_CLOSED; 
+  dataToSend.servoState = SERVO_CLOSED;
+  myLittleFS->writeServoLog();
 }
 
 void MyServo::pushServo()
 {
   Serial.println("Servo2 DOWN");   
   rotateServo(&lockerServo, SERVO2_TARGET_POS, 2);
-  dataToSend.lockerState = SERVO_PUSH; 
+  dataToSend.lockerState = SERVO_PUSH;
+  myLittleFS->writeServoLog();
 }
 
 void MyServo::releaseServo()
@@ -113,4 +116,5 @@ void MyServo::releaseServo()
   Serial.println("Servo2 UP");
   rotateServo(&lockerServo, SERVO2_INITIAL_POS, 5);
   dataToSend.lockerState = SERVO_RELEASE;
+  myLittleFS->writeServoLog();
 }

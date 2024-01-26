@@ -40,9 +40,10 @@ void initPacket(PACKET* _packet);
 bool sendPacket(uint8_t* _data, size_t len);
 void toggleHallSensor(ToggleFlag _toggleFlag);
 void toggleColorSensor(ToggleFlag _toggleFlag);
-uint8_t* readString(uint32_t bufferSize);
-uint8_t* ascii_to_hex( uint8_t* _string, uint8_t _size);
-unsigned int ascii_to_hex2(const char* str, size_t size, uint8_t* hex);
+char* readString(uint32_t bufferSize);
+uint8_t* ascii_to_hex_simple( uint8_t* _string, uint8_t _size);
+unsigned int ascii_to_hex(const char* str, size_t size, uint8_t* hex);
+uint8_t caculateCheckSum(uint8_t* _hex, uint8_t _size);
 
 #ifdef MYSERVO
 MyServo* myServo = new MyServo();
@@ -73,26 +74,24 @@ static void tickTock(void*) {
 }
 
 
-String text = "";
-uint8_t* receivedText = nullptr;
-uint8_t* structArray = nullptr;
 
-uint8_t hex[64] ={0,};
+
+uint8_t* structArray = nullptr;
+char* receivedText = nullptr;
+uint8_t hex[256] ={0,};
 
 
 static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
-      receivedText = readString(64);
+      receivedText = readString(256);
       
-      String charToString = (char*)receivedText;
-      
-      
-      if(charToString.length() > 0)
+      if(String(receivedText).length() > 0)
       {
-        int length = charToString.length() - 1;
+        int length = String(receivedText).length() - 1; // \n 포함되어있기에 - 1    
+        int endOfText = length/2 - 1;           // 처음 빼기 -1 (stx)
         Serial.printf("String Length : %d\r\n", length );
-        ascii_to_hex2(charToString.c_str(), length, hex);  // \n 포함되어있기에 - 1
+        ascii_to_hex(receivedText, length, hex);
 
         // for (int i = 0; i < length/2; i++)
         // {
@@ -101,200 +100,76 @@ static void uartTask(void* ){
 
         if(hex[0] == 0x02)
         {
-          Serial.println("Start");
+          Serial.println("--Start--");
         }
         
-        for (int i = 1; i < length/2 - 1; i++)
+        for (int i = 1; i < endOfText; i++) // 1 ~ 5
         {
           Serial.printf("[%d] 0x%02x\r\n", i, hex[i]);
-        }  
-
-
-        if(hex[length/2 - 1] == 0x03)
-        {
-          Serial.println("END");
         }
-        
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+
+
+        switch (hex[1])
+        {
+        case RESPONSE_SERVO_OPEN:
+          myServo->openServo();
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+
+          break;
+
+        case RESPONSE_SERVO_CLOSE:
+          myServo->closeServo();
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+          break;
+
+        case RESPONSE_LOCKER_RELEASE:
+          myServo->releaseServo();
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+          break;
+
+        case RESPONSE_LOCKER_PUSH:
+          myServo->pushServo();
+          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+          break;
+
+        case RESPONSE_HALL_ON:
+          toggleHallSensor(ON);
+          break;
+
+        case RESPONSE_HALL_OFF:
+          toggleHallSensor(OFF);
+          break;
+
+        case RESPONSE_COLOER_ON:
+          toggleColorSensor(ON);
+          break;
+
+        case RESPONSE_COLOER_OFF:
+          toggleColorSensor(OFF);
+          break;
+
+        default:
+          break;
+        }
+
+  
+        dataToSend.checksum = caculateCheckSum(hex, endOfText);
+
+
+        if(hex[endOfText] == 0x03)
+        {
+          Serial.println("-- END --");
+        }
+
+        if(dataToSend.checksum == 0xAA)
+        {
+          
+          sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+          Serial.println("Send Return Packet");
+        }
       }
 
-      // structArray = new uint8_t[sizeof(dataToSend)];
-      // structArray = ascii_to_hex(receivedText, charToString.length() - 1);
-      // if(charToString.length() > 0)
-      // {
-      //   Serial.printf("String Length : %d\r\n", charToString.length() );
-
-      //   for (uint8_t i = 0; i < sizeof(dataToSend); i++)
-      //   {
-      //     Serial.printf("0x%0x\r\n", structArray[i]);
-      //   }
-
-      //   Serial.println("-----------------------");
-      // }
-      
-      
-      // String hexString = "";
-      
-      // uint8_t v ;
-      // if(charToString.length() > 0)
-      // {
-      //   for (uint8_t i = 0; i < sizeof(dataToSend) * 2; i++)
-      //   {
-          
-      //     // hexString += String(receivedText[i]);
-      //     // Serial.printf("%s\r\n", hexString);
-      //     if(i % 2 == 0)
-      //     {
-      //       hexString = "";
-      //       v = receivedText[i] << 4;
-      //       Serial.printf("[000] - %d\r\n", v);
-      //     }
-      //     else if (i % 2 == 1)
-      //     {
-      //       v += receivedText[i];
-            
-      //       // Serial.printf("HEX : 0x%02x\r\n", v);
-      //       Serial.printf("[111] - %d\r\n", v);
-      //       // Serial.printf("[%d] [ARRAY %d ]- %s\r\n", i, i / 2, hexString); 
-      //       // structArray[i/2] = hexString.toInt();    
-      //     }         
-      //     // Serial.printf("Data : %c \r\n", receivedText[i]);
-      //   }
-      // }
-      
-      
-      // char ch = HWSERIAL.read();
-      
-      // if(ch == 0x02)
-      // {
-      //   int textCount = 0;
-      //   while (true)
-      //   {
-      //     char packetByte = HWSERIAL.read();
-      //     if(packetByte != 0xFF)  
-      //     {
-            
-      //       Serial.printf("Input character[%d] : %c\r\n", textCount++, ch); // String -> Hex
-      //     }
-      //     else if(packetByte == 0x03)
-      //     {
-      //       textCount = 0;
-      //       break;
-      //     }
-      //   }
-      // }
-      // else
-      // {
-        
-      // }
-      // vTaskDelay(pdMS_TO_TICKS(100));
-      // String s = HWSERIAL.readStringUntil('\n');
-      // if(s.length() > 0)
-      // {
-      //   Serial.printf("Received Text : %s\r\n",s);
-      // }
-      
-      // while(HWSERIAL.read() != -1);
-    // String context = HWSERIAL.readStringUntil('\n');
-    // if(context.length() > 0)
-    // {
-    //   char* array = nullptr;
-    //   context.toCharArray(array, context.length());
-    //   Serial.printf("Received : %s\r\n" , context);
-    //   for (uint32_t i = 0; i < context.length(); i++)
-    //   {
-    //     Serial.printf("Input Value : 0x%02X", array[i]);
-    //   }
-    //   Serial.println();
-      
-    // }
-//       int packetCount = 0;
-//       if(text == (char)0x02)
-//       {
-//         while (true)
-//         {
-//           packetCount++;
-//           char packetData = HWSERIAL.parseInt();
-//           Serial.printf("packet : %c\r\n", packetData);  
-//           if(packetData == (char)0x03 || packetCount == sizeof(dataToSend)/sizeof(uint8_t))
-//           {
-//             Serial.println("End of Packet");
-//             break;
-//           }
-//         } 
-//       }
-      
-//       if(text == 'u')
-//       {
-// #ifdef MYSERVO
-//         myServo->releaseServo();
-// #endif
-//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
-// #ifdef MYLITTLEFS
-//         myLittleFS->writeServoLog();
-// #endif
-//       }
-//       else if (text == 'd')
-//       {
-// #ifdef MYSERVO
-//         myServo->pushServo();      
-// #endif
-//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
-// #ifdef MYLITTLEFS
-//         myLittleFS->writeServoLog();
-// #endif
-//       }
-//       else if (text == 'o')
-//       {
-// #ifdef MYSERVO
-//         myServo->openServo();
-// #endif
-//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
-// #ifdef MYLITTLEFS
-//         myLittleFS->writeServoLog();
-// #endif
-//       }
-//       else if (text == 'c')
-//       {
-// #ifdef MYSERVO
-//         myServo->closeServo();
-// #endif
-//         stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
-// #ifdef MYLITTLEFS
-//         myLittleFS->writeServoLog();
-// #endif
-//       }
-//       else if (text == 'n')
-//       {
-//         Serial.println("========Color On========");
-//         toggleColorSensor(ON);
-//       }
-//       else if (text == 'f')
-//       {
-//         Serial.println("========Color Off========");
-//         toggleColorSensor(OFF);
-        
-//         for (int i = 0; i < LED_COUNT; i++)
-//         {
-//             myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 2);
-//         }
-//       }
-//       else if (text == 'i')
-//       {
-//         Serial.println("Send Packet");
-//         sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-//       }
-//       else if (text == 's')
-//       {
-//         Serial.println("========Start reading hallSensor========");
-//         toggleHallSensor(ON);
-//       }
-//       else if (text == 't')
-//       {
-//         Serial.println("========Stop reading hallSensor========");
-//         toggleHallSensor(OFF);
-//       }
-      
+      // vTaskDelay(pdMS_TO_TICKS(1));
       
       //vTaskDelay(pdMS_TO_TICKS(1));
       // vTaskDelayUntil(&xLastWakeTime, 1/portTICK_PERIOD_MS);
@@ -416,7 +291,7 @@ static void colorSensorTask(void*)
     int neopixelValue = map(pwmValue, 0, 255, 0, 250);
     for (int i = 0; i < LED_COUNT; i++)
     {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 2);
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 1);
     }
     
     
@@ -451,7 +326,7 @@ static void hallSensorTask(void*)
       dataToSend.hallState = HALL_FAR;
     }
     
-    ::vTaskDelay(pdMS_TO_TICKS(20));
+    ::vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -525,9 +400,7 @@ static void buttonTask(void*)
 #ifdef MYSERVO
           myServo->pushServo();
 #endif
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
-#endif
+
           stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
           ::vTaskDelay(pdMS_TO_TICKS(100));
         }
@@ -537,9 +410,6 @@ static void buttonTask(void*)
           // Serial.println("Servo Release");
 #ifdef MYSERVO
           myServo->releaseServo();
-#endif
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
 #endif
           stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
           ::vTaskDelay(pdMS_TO_TICKS(100));
@@ -561,7 +431,9 @@ static void buttonTask(void*)
 
 // Setup
 FLASHMEM __attribute__((noinline)) void setup() {
-    ::Serial.begin(115200);
+    Serial.setTimeout(50);
+    Serial.begin(115200);
+    HWSERIAL.setTimeout(50);
     HWSERIAL.begin(115200);
     
     Wire.begin();
@@ -608,10 +480,10 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
     // ::xTaskCreate(tickTock, "tickTock", 1024, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
-    ::xTaskCreate(uartTask2, "uartTask2", 8192, nullptr, 1, nullptr);
+    // ::xTaskCreate(uartTask2, "uartTask2", 8192, nullptr, 1, nullptr);
     ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
     ::xTaskCreate(hallSensorTask, "hallSensorTask", 1024, nullptr, 2, &hallSensorHandle);
-    ::xTaskCreate(buttonTask, "ButtonTask", 1024, nullptr, 1, nullptr);
+    ::xTaskCreate(buttonTask, "ButtonTask", 512, nullptr, 1, nullptr);
 
     //::xTaskCreate(stopSensorTask, "stopSensor", 8192, nullptr, 3, nullptr);
     ::Serial.println("setup(): starting scheduler...");
@@ -655,7 +527,7 @@ bool sendPacket(uint8_t* _data, size_t len)
     //Serial.printf("0x%x \r\n", _data[i]);
     HWSERIAL.write(_data[i]);
   }
-  //Serial.println("-----------");
+  Serial.println("-----------");
   return true;
 }
 
@@ -664,12 +536,17 @@ void toggleHallSensor(ToggleFlag _toggleFlag)
   if(_toggleFlag == ON)
   {
     vTaskResume(hallSensorHandle);
-
+    Serial.println("Start HallSensor");
+    // ::vTaskDelay(pdMS_TO_TICKS(10));
+    
   }
   else
   {
+    Serial.println("Stop HallSensor");
+
     vTaskSuspend(hallSensorHandle);
     dataToSend.hallState = HALL_FAR;
+    // ::vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
@@ -677,22 +554,24 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
 {
   if(_toggleFlag == ON)
   {
-    vTaskResume(colorSensorHandle);
     dataToSend.colorState = COLOR_ON;
+    vTaskResume(colorSensorHandle);    
+    // ::vTaskDelay(pdMS_TO_TICKS(10));
   }
   else
   {
-    vTaskSuspend(colorSensorHandle);
     dataToSend.colorState = COLOR_OFF;
+    vTaskSuspend(colorSensorHandle); 
+    // ::vTaskDelay(pdMS_TO_TICKS(10));
   }
 }
 
 
-uint8_t* readString(uint32_t _bufferSize)
+char* readString(uint32_t _bufferSize)
 {
-  uint8_t* buffer = nullptr;
+  char* buffer = nullptr;
 
-  buffer = new uint8_t[_bufferSize];
+  buffer = new char[_bufferSize];
   int length = HWSERIAL.readBytesUntil('\r', buffer, _bufferSize); // \n전까지 읽음 hello\n 우면 5개 hello 만 읽음
   if(length > 0)
   {
@@ -713,7 +592,7 @@ uint8_t* readString(uint32_t _bufferSize)
   return buffer;  // 이쪽 한번 더 봐야함
 }
 
-uint8_t* ascii_to_hex( uint8_t* _string, uint8_t _size)
+uint8_t* ascii_to_hex_simple( uint8_t* _string, uint8_t _size)
 {
   uint8_t* hexArray = nullptr;
   hexArray = new uint8_t[_size/2];
@@ -734,11 +613,10 @@ uint8_t* ascii_to_hex( uint8_t* _string, uint8_t _size)
     
   }
   
-
   return hexArray;
 }
 
-unsigned int ascii_to_hex2(const char* str, size_t size, uint8_t* hex)
+unsigned int ascii_to_hex(const char* str, size_t size, uint8_t* hex)
 {
     unsigned int i, h, high, low;
     for (h = 0, i = 0; i < size; i += 2, ++h) {
@@ -752,3 +630,18 @@ unsigned int ascii_to_hex2(const char* str, size_t size, uint8_t* hex)
     }
     return h;
 }
+
+uint8_t caculateCheckSum(uint8_t* _hex, uint8_t _size)
+{
+  uint8_t resultValue = 0;
+  // for (int i = 1; i < _size; i++)
+  // {
+  //   resultValue += _hex[i];
+  // }
+  resultValue  = _hex[_size - 1] << 1; 
+
+  Serial.printf("CHECKSUM : 0x%02X\r\n", resultValue);
+  
+  return resultValue;
+}
+

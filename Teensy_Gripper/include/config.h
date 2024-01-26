@@ -70,6 +70,7 @@ const int serialInterval = 1000;
 typedef struct __attribute__((packed)) packet
 {
   uint8_t stx;
+  uint8_t response;
   uint8_t servoState;
   uint8_t hallState;
   uint8_t colorState;
@@ -91,5 +92,18 @@ typedef enum ToggleFlag
   OFF = 0x00,
   ON  = 0x01
 }TOGGLE_FLAG;
+
+typedef enum Response_State
+{
+  RESPONSE_INIT           = 0x00,
+  RESPONSE_SERVO_OPEN     = 0x01,
+  RESPONSE_SERVO_CLOSE    = 0x02,
+  RESPONSE_LOCKER_RELEASE = 0x03,
+  RESPONSE_LOCKER_PUSH    = 0x04,
+  RESPONSE_HALL_ON        = 0x05,
+  RESPONSE_HALL_OFF       = 0x06,
+  RESPONSE_COLOER_ON      = 0x07,
+  RESPONSE_COLOER_OFF     = 0x08,
+}RESPONSE_STATE;
 
 #endif
