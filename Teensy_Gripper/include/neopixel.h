@@ -37,7 +37,7 @@ public:
     }
 
     void InitNeopixel();
-    void pickOneLED(uint8_t ledNum, uint32_t color, uint8_t brightness, int wait);
+    void pickOneLED(uint8_t ledNum, uint32_t color, uint8_t brightness, uint32_t wait);
     void blinkNeopixel(uint32_t color, int times, int delays);
     void resetNeopixel();
     void colorWipe(uint32_t c, uint8_t wait);

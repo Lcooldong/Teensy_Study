@@ -1,6 +1,7 @@
 // #include "Adafruit_NeoPixel.h"
 #include "neopixel.h"
 #include "arduino_freertos.h"
+#include "avr/pgmspace.h"
 //Adafruit_NeoPixel strip;
 
 
@@ -10,11 +11,11 @@ void MyNeopixel::InitNeopixel()
     strip->begin();
 }
 
-void MyNeopixel::pickOneLED(uint8_t ledNum, uint32_t color, uint8_t brightness, int wait){
+void MyNeopixel::pickOneLED(uint8_t ledNum, uint32_t color, uint8_t brightness, uint32_t wait){
     strip->setBrightness(brightness);
     strip->setPixelColor(ledNum, color);  
     strip->show();             
-    // ::vTaskDelay(pdMS_TO_TICKS(wait));                            
+    // ::vTaskDelay(pdMS_TO_TICKS(wait));                      
     delay(wait);
 }
 
@@ -96,7 +97,7 @@ void MyNeopixel::theaterChaseRainbow(uint8_t wait) {
       }
       strip->show();
       // ::vTaskDelay(pdMS_TO_TICKS(wait));
-      // delay(wait);
+      delay(wait);
 
       for (uint16_t i=0; i < strip->numPixels(); i=i+3) {
         strip->setPixelColor(i+q, 0);        //turn every third pixel off

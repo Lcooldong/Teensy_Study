@@ -27,8 +27,10 @@ bool pressingButtonFlag = false;
 
 uint64_t systemCount = 0; 
 
+TaskHandle_t operationHandle;
 TaskHandle_t colorSensorHandle;
 TaskHandle_t hallSensorHandle;
+
 bool colorTestFlag = false;
 bool hallTestFlag = false;
 
@@ -76,22 +78,24 @@ static void tickTock(void*) {
 
 
 
-uint8_t* structArray = nullptr;
 char* receivedText = nullptr;
-uint8_t hex[256] ={0,};
-
+uint8_t hex[32] ={0,};
+static uint8_t operationHex;
+static uint8_t operationCount = 0;
 
 static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
-      receivedText = readString(256);
       
+      receivedText = readString(32);
+  
       if(String(receivedText).length() > 0)
       {
+
         int length = String(receivedText).length() - 1; // \n 포함되어있기에 - 1    
         int endOfText = length/2 - 1;           // 처음 빼기 -1 (stx)
         Serial.printf("String Length : %d\r\n", length );
-        ascii_to_hex(receivedText, length, hex);
+        ascii_to_hex(receivedText, length, hex);    
 
         // for (int i = 0; i < length/2; i++)
         // {
@@ -99,7 +103,10 @@ static void uartTask(void* ){
         // }
 
         if(hex[0] == 0x02)
-        {
+        { 
+          ++operationCount;
+          
+          vTaskResume(operationHandle);
           Serial.println("--Start--");
         }
         
@@ -108,57 +115,55 @@ static void uartTask(void* ){
           Serial.printf("[%d] 0x%02x\r\n", i, hex[i]);
         }
 
-
         switch (hex[1])
         {
-        case RESPONSE_SERVO_OPEN:
-          myServo->openServo();
-          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+            case RESPONSE_SERVO_OPEN:
+              myServo->openServo();
+              stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
+              break;
 
-          break;
+            case RESPONSE_SERVO_CLOSE:
+              myServo->closeServo();
+              stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
+              break;
 
-        case RESPONSE_SERVO_CLOSE:
-          myServo->closeServo();
-          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
-          break;
+            case RESPONSE_LOCKER_RELEASE:
+              myServo->releaseServo();
+              stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
+              break;
 
-        case RESPONSE_LOCKER_RELEASE:
-          myServo->releaseServo();
-          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 255), 10, 1);
-          break;
+            case RESPONSE_LOCKER_PUSH:
+              myServo->pushServo();
+              stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
+              break;
+            case RESPONSE_HALL_ON:
+              toggleHallSensor(ON);
+              break;
 
-        case RESPONSE_LOCKER_PUSH:
-          myServo->pushServo();
-          stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 100), 10, 1);
-          break;
+            case RESPONSE_HALL_OFF:
+              toggleHallSensor(OFF);
+              break;
+            case RESPONSE_COLOER_ON:
+              toggleColorSensor(ON);
+              break;
+          case RESPONSE_COLOER_OFF:
 
-        case RESPONSE_HALL_ON:
-          toggleHallSensor(ON);
-          break;
-
-        case RESPONSE_HALL_OFF:
-          toggleHallSensor(OFF);
-          break;
-
-        case RESPONSE_COLOER_ON:
-          toggleColorSensor(ON);
-          break;
-
-        case RESPONSE_COLOER_OFF:
-          toggleColorSensor(OFF);
-          break;
-
-        default:
-          break;
+              toggleColorSensor(OFF);
+              
+              break;
         }
 
-  
-        dataToSend.checksum = caculateCheckSum(hex, endOfText);
+        operationHex = hex[1];
+        Serial.printf("[0x%02X] into the Hex\r\n", hex[1]);
 
+        dataToSend.checksum = caculateCheckSum(hex, endOfText);
 
         if(hex[endOfText] == 0x03)
         {
+          vTaskSuspend(operationHandle);
           Serial.println("-- END --");
+          // operationCount = 0;
+          // operationHex = 0x00;
         }
 
         if(dataToSend.checksum == 0xAA)
@@ -175,6 +180,40 @@ static void uartTask(void* ){
       // vTaskDelayUntil(&xLastWakeTime, 1/portTICK_PERIOD_MS);
       //vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1));
     }
+}
+
+
+static void operationTask(void*)
+{
+  while (true)
+  {
+    
+    // Serial.printf("operation HEX --> 0x%02x  Count[%d]\r\n", operationHex, operationCount);
+    
+    // if((operationCount == 1) && (operationHex != 0))
+    if((operationCount == 1) )
+    {
+      Serial.printf("operation HEX --> 0x%02x\r\n", operationHex);
+      switch (operationHex)
+      {
+        case RESPONSE_COLOER_OFF:
+          toggleColorSensor(OFF);
+          break;
+
+        default:
+          break;
+      }
+      operationCount = 0;
+      operationHex = 0x00;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+    // else
+    // {
+    //   Serial.printf("Not Working [%d]  -  0x%02X\r\n", operationCount, operationHex);
+    // }
+    
+    // vTaskDelay(pdMS_TO_TICKS(10));
+  }
 }
 
 static void uartTask2(void*)
@@ -291,11 +330,12 @@ static void colorSensorTask(void*)
     int neopixelValue = map(pwmValue, 0, 255, 0, 250);
     for (int i = 0; i < LED_COUNT; i++)
     {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 1);
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 0);
+        ::vTaskDelay(pdMS_TO_TICKS(2));
     }
     
-    
-    ::vTaskDelay(pdMS_TO_TICKS(50));
+    // Serial.flush();
+    // ::vTaskDelay(pdMS_TO_TICKS(50));
   } 
 }
 
@@ -360,9 +400,6 @@ static void buttonTask(void*)
 #ifdef MYSERVO
             myServo->openServo();
 #endif
-#ifdef MYLITTLEFS
-            myLittleFS->writeServoLog();
-#endif
             
             stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
             
@@ -373,9 +410,6 @@ static void buttonTask(void*)
             //Serial.println("Servo Close");
 #ifdef MYSERVO
             myServo->closeServo(); 
-#endif
-#ifdef MYLITTLEFS
-        myLittleFS->writeServoLog();
 #endif
             stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 100), 10, 1);
           }
@@ -431,7 +465,7 @@ static void buttonTask(void*)
 
 // Setup
 FLASHMEM __attribute__((noinline)) void setup() {
-    Serial.setTimeout(50);
+    Serial.setTimeout(10);
     Serial.begin(115200);
     HWSERIAL.setTimeout(50);
     HWSERIAL.begin(115200);
@@ -477,13 +511,14 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.println(PSTR("\r\nBooting FreeRTOS kernel " tskKERNEL_VERSION_NUMBER ". Built by gcc " __VERSION__ " (newlib " _NEWLIB_VERSION ") on " __DATE__ ". ***\r\n"));
 
     
-    ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
+    ::xTaskCreate(blink, "blink", 128, nullptr, 2, nullptr);
     // ::xTaskCreate(tickTock, "tickTock", 1024, nullptr, 1, nullptr);
-    ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
+    ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 2, nullptr);
     // ::xTaskCreate(uartTask2, "uartTask2", 8192, nullptr, 1, nullptr);
-    ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
-    ::xTaskCreate(hallSensorTask, "hallSensorTask", 1024, nullptr, 2, &hallSensorHandle);
-    ::xTaskCreate(buttonTask, "ButtonTask", 512, nullptr, 1, nullptr);
+    ::xTaskCreate(operationTask, "operationTask", 4096, nullptr, 1, &operationHandle);
+    ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 3, &colorSensorHandle);
+    ::xTaskCreate(hallSensorTask, "hallSensorTask", 1024, nullptr, 3, &hallSensorHandle);
+    ::xTaskCreate(buttonTask, "ButtonTask", 512, nullptr, 2, nullptr);
 
     //::xTaskCreate(stopSensorTask, "stopSensor", 8192, nullptr, 3, nullptr);
     ::Serial.println("setup(): starting scheduler...");
@@ -496,7 +531,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     //   ::Serial.flush();
     //   //vTaskDelete(xHandle);
     // }
-
+    ::vTaskSuspend(operationHandle);
     ::vTaskSuspend(colorSensorHandle);
     ::vTaskSuspend(hallSensorHandle);
     ::vTaskStartScheduler();
@@ -644,4 +679,6 @@ uint8_t caculateCheckSum(uint8_t* _hex, uint8_t _size)
   
   return resultValue;
 }
+
+
 
