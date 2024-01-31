@@ -19,6 +19,7 @@ public:
     void initServo();
     void rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond);
     void openServo();
+    void openServo(bool hallRangeOn);
     void closeServo();
     void pushServo();
     void releaseServo();

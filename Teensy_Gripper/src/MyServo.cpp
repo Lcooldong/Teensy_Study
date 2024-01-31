@@ -1,9 +1,11 @@
 #include "myServo.h"
 #include "MyLittleFS.h"
+#include "neopixel.h"
 #include "arduino_freertos.h"
 
 extern PACKET dataToSend;
 extern MyLittleFS* myLittleFS;
+extern MyNeopixel* stateNeopixel;
 
 MyServo::MyServo(/* args */)
 {
@@ -91,8 +93,38 @@ void MyServo::openServo()
   rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
   Serial.println("========Servo Open========");
   dataToSend.servoState = SERVO_OPENED;
-  myLittleFS->writeServoLog();
-  //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  myLittleFS->writeServoLog();  
+}
+
+void MyServo::openServo(bool hallRangeOn)
+{
+  int timeOutCount = 0;
+  while (timeOutCount < 100)
+  {
+    if(dataToSend.hallState == HALL_ARRIVED)
+    {
+      rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
+      Serial.println("========Servo Open========");
+      dataToSend.servoState = SERVO_OPENED;
+      myLittleFS->writeServoLog(); 
+      
+      break;
+    }
+    else
+    {
+      timeOutCount++;
+      vTaskDelay(pdMS_TO_TICKS(100));
+    }
+  }
+
+  Serial.println("HallSensor Error");
+  for (int i = 0; i < 10; i++)
+  {
+    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 0, 0), 0, 1);
+    vTaskDelay(pdMS_TO_TICKS(1000));    
+    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 50, 1);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
 }
 
 void MyServo::closeServo()
