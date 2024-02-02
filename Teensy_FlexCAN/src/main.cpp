@@ -11,7 +11,7 @@
 
 isotp<RX_BANKS_16, 512> tp; /* 16 slots for multi-ID support, at 512bytes buffer each payload rebuild */
 
-FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1;
+FlexCAN_T4<CAN2, RX_SIZE_256, TX_SIZE_16> Can1; // RX  TZ
 
 void myCallback(const ISOTP_data &config, const uint8_t *buf) {
   Serial.print("ID: ");
@@ -46,31 +46,51 @@ void setup() {
 
   Can1.begin();
   Can1.setClock(CLK_60MHz);
+  
   //Can1.setBaudRate(95238);
   Can1.setBaudRate(50000);
   Can1.setMaxMB(16);
   Can1.enableFIFO();
   Can1.enableFIFOInterrupt();
+  
   //Can1.onReceive(canSniff);
   tp.begin();
   tp.setWriteBus(&Can1); /* we write to this bus */
   tp.onReceive(myCallback); /* set callback */
-
+  delay(1000);
+  Serial.println("Can  Setup");
 }
 
-int count = 0;
+int count1 = 0;
+int count2 = 0;
 void loop() {
-  static uint32_t sendTimer = millis();
-  if ( millis() - sendTimer > 1000 ) {
+  static uint32_t sendTimer1 = millis();
+  static uint32_t sendTimer2 = millis();
+  if ( millis() - sendTimer1 > 1000 ) {
     uint8_t buf[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5 };
     const char b[] = "01413AAAAABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    uint8_t test[] = { 0, 1, 2, 3, 4, 5, 6}; // data in first frame
     ISOTP_data config;
     config.id = 0x123;
     config.flags.extended = 0; /* standard frame */
     config.separation_time = 10; /* time between back-to-back frames in millisec */
-    tp.write(config, buf, sizeof(buf));
+    // tp.write(config, buf, sizeof(buf));
+    // tp.write(config, test, sizeof(test));
     tp.write(config, b, sizeof(b));
-    sendTimer = millis();
-    Serial.printf("%d\r\n", count++);
+    sendTimer1 = millis();
+    Serial.printf("[1] %d\r\n", count1++);
+  }
+
+
+  if ( millis() - sendTimer2 > 1500 ) {
+    uint8_t test2[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+    ISOTP_data config;
+    config.id = 0x456;
+    config.flags.extended = 0; /* standard frame */
+    config.separation_time = 10; /* time between back-to-back frames in millisec */ 
+    tp.write(config, test2, sizeof(test2));
+    sendTimer2 = millis();
+    Serial.printf("[2] %d\r\n", count2++);
   }
 }
