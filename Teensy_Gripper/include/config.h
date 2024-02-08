@@ -1,8 +1,8 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-//#define OLD_PINOUT
-#define NEW_PINOUT
+#define OLD_PINOUT
+//#define NEW_PINOUT
 
 #define HWSERIAL Serial2  // RX2 : 7, TX2 : 8
 

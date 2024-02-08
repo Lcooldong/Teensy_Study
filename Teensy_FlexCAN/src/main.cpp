@@ -46,13 +46,13 @@ void setup() {
 
   Can1.begin();
   Can1.setClock(CLK_60MHz);
-  
+
   //Can1.setBaudRate(95238);
-  Can1.setBaudRate(50000);
+  Can1.setBaudRate(500000);
   Can1.setMaxMB(16);
   Can1.enableFIFO();
   Can1.enableFIFOInterrupt();
-  
+
   //Can1.onReceive(canSniff);
   tp.begin();
   tp.setWriteBus(&Can1); /* we write to this bus */
@@ -76,21 +76,21 @@ void loop() {
     config.flags.extended = 0; /* standard frame */
     config.separation_time = 10; /* time between back-to-back frames in millisec */
     // tp.write(config, buf, sizeof(buf));
-    // tp.write(config, test, sizeof(test));
-    tp.write(config, b, sizeof(b));
+    // tp.write(config, b, sizeof(b));
+    tp.write(config, test, sizeof(test));
     sendTimer1 = millis();
     Serial.printf("[1] %d\r\n", count1++);
   }
 
 
-  if ( millis() - sendTimer2 > 1500 ) {
-    uint8_t test2[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
-    ISOTP_data config;
-    config.id = 0x456;
-    config.flags.extended = 0; /* standard frame */
-    config.separation_time = 10; /* time between back-to-back frames in millisec */ 
-    tp.write(config, test2, sizeof(test2));
-    sendTimer2 = millis();
-    Serial.printf("[2] %d\r\n", count2++);
-  }
+  // if ( millis() - sendTimer2 > 1500 ) {
+  //   uint8_t test2[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'};
+  //   ISOTP_data config;
+  //   config.id = 0x456;
+  //   config.flags.extended = 0; /* standard frame */
+  //   config.separation_time = 10; /* time between back-to-back frames in millisec */
+  //   tp.write(config, test2, sizeof(test2));
+  //   sendTimer2 = millis();
+  //   Serial.printf("[2] %d\r\n", count2++);
+  // }
 }

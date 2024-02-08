@@ -359,8 +359,9 @@ FLASHMEM __attribute__((noinline)) void setup() {
     // Serial.begin(250000);
     HWSERIAL.setTimeout(100);
     HWSERIAL.begin(500000);
-    
+    stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 255, 255), 20, 50);
     Wire.begin();
+    myServo->initServo();
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::pinMode(button_Pin, arduino::INPUT_PULLUP);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
@@ -374,7 +375,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
         myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 10);
     }
 
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 10; i++)
     {
       if(tcs3430.begin())
       {
@@ -404,7 +405,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
     // ::xTaskCreate(tickTock, "tickTock", 1024, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
-    // ::xTaskCreate(myUartTask, "myUartTask", 8192, nullptr, 1, nullptr);
+    ::xTaskCreate(myUartTask, "myUartTask", 8192, nullptr, 1, nullptr);
     // ::xTaskCreate(operationTask, "operationTask", 1024, nullptr, 1, &operationHandle);
     ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
     ::xTaskCreate(hallSensorTask, "hallSensorTask", 512, nullptr, 2, &hallSensorHandle);
@@ -499,6 +500,11 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
     vTaskSuspend(colorSensorHandle);
     sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
     // ::vTaskDelay(pdMS_TO_TICKS(10));
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 10);
+        // vTaskDelay(pdMS_TO_TICKS(1));
+    }
   }
 }
 

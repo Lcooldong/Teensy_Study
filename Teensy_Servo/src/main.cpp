@@ -37,7 +37,7 @@
 //#define SERIAL_SERVO
 
 const int ServoPotentionMeter_Pin = 14;
-const int Servo_Pin = 14;
+const int Servo_Pin = 16;
 int hallSensorValue = 0;
 
 const int blinkInterval =  300;
@@ -132,9 +132,9 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.println(PSTR("\r\nBooting FreeRTOS kernel " tskKERNEL_VERSION_NUMBER ". Built by gcc " __VERSION__ " (newlib " _NEWLIB_VERSION ") on " __DATE__ ". ***\r\n"));
 
     
-    ::xTaskCreate(task1, "task1", 128, nullptr, 3, nullptr);
+    ::xTaskCreate(task1, "task1", 128, nullptr, 1, nullptr);
     ::xTaskCreate(task2, "task2", 128, nullptr, 1, nullptr);
-    ::xTaskCreate(servoTask, "servoTask", 8192, nullptr, 2, nullptr);
+    ::xTaskCreate(servoTask, "servoTask", 8192, nullptr, 1, nullptr);
     ::Serial.println("setup(): starting scheduler...");
     ::Serial.flush(); // 단점 : UART 느림
 
