@@ -51,12 +51,16 @@ void setup() {
   Can1.setBaudRate(500000);
   Can1.setMaxMB(16);
   Can1.enableFIFO();
-  Can1.enableFIFOInterrupt();
-
-  //Can1.onReceive(canSniff);
+  Can1.enableFIFOInterrupt(); 
+  
+  // Standard Filter
+  Can1.setFIFOFilter(REJECT_ALL);
+  Can1.setFIFOFilter(0, 0x124, STD);
+  
+  Can1.onReceive(canSniff);
   tp.begin();
   tp.setWriteBus(&Can1); /* we write to this bus */
-  tp.onReceive(myCallback); /* set callback */
+  //tp.onReceive(myCallback); /* set callback */
   delay(1000);
   Serial.println("Can  Setup");
 }
@@ -70,7 +74,7 @@ void loop() {
     uint8_t buf[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5 };
     const char b[] = "01413AAAAABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    uint8_t test[] = { 0, 1, 2, 3, 4, 5, 6}; // data in first frame
+    uint8_t test[] = { 0, 1, 0x2A, 3, 4, 0x0F, 6}; // data in first frame
     ISOTP_data config;
     config.id = 0x123;
     config.flags.extended = 0; /* standard frame */
