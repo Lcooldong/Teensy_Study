@@ -14,8 +14,8 @@ const int CRI_PIN = 5;
 const int WAR_PIN = 6;
 const int TC_PIN = 10;
 
-const int SDA_PIN = 7;
-const int SCL_PIN = 8;
+const int SDA_PIN = 18;
+const int SCL_PIN = 19;
 
 
 SDL_Arduino_INA3221 ina3221;
@@ -23,10 +23,15 @@ SDL_Arduino_INA3221 ina3221;
 void setup() {
   Serial.begin(115200);
 
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  digitalWrite(LED_BUILTIN, HIGH);
+
   Serial.println("SDA_Arduino_INA3221_Test");
   Serial.println("Measuring voltage and current with ina3221 ...");
 
-  Wire.begin();
+  Wire.begin();   // I2C0 SDA0(18) , SCL0(19)
+ 
   ina3221.begin();
 
   Serial.print("Manufactures ID=0x");
@@ -90,7 +95,7 @@ void loop() {
   Serial.print("Output Current 3:       "); Serial.print(current_mA3); Serial.println(" mA");
   Serial.println("");
 
-  delay(1000);
+  delay(100);
   digitalWrite(LED_BUILTIN, LOW);
-  delay(500); 
+  delay(100);
 }
