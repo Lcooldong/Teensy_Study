@@ -95,7 +95,7 @@ void loop() {
   Serial.print("Output Current 3:       "); Serial.print(current_mA3); Serial.println(" mA");
   Serial.println("");
 
-  delay(100);
+  delay(1000);
   digitalWrite(LED_BUILTIN, LOW);
-  delay(100);
+  delay(1000);
 }
