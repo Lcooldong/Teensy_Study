@@ -165,7 +165,7 @@ static void uartTask(void* ){
             case RESPONSE_COLOER_ON:
               // dataToSend.colorState = COLOR_ON;
               // readColorSensor(100);
-              toggleColorSensor(ON);        
+              toggleColorSensor(ON);
               break;
           case RESPONSE_COLOER_OFF:
               while (colorStopFlag)
@@ -283,34 +283,35 @@ static void colorSensorTask(void*)
 {
   while (true)
   {
+
     // TickType_t xLastWakeTime = xTaskGetTickCount();
-    colorStopFlag = true;
-    uint16_t YData = tcs3430.getYData();
+    // colorStopFlag = true;
+    // uint16_t YData = tcs3430.getYData();
 
-      // Send
-    Serial.printf("Y Value : %d\r\n", YData);
-    if(YData >= COLOR_Y_MAX_VALUE)
-    {
-      YData = COLOR_Y_MAX_VALUE;
-    }
-    else if(YData <= COLOR_Y_MIN_VALUE)
-    {
-      YData = COLOR_Y_MIN_VALUE;
-    }
-    // Serial.println(YData);
+    //   // Send
+    // Serial.printf("Y Value : %d\r\n", YData);
+    // if(YData >= COLOR_Y_MAX_VALUE)
+    // {
+    //   YData = COLOR_Y_MAX_VALUE;
+    // }
+    // else if(YData <= COLOR_Y_MIN_VALUE)
+    // {
+    //   YData = COLOR_Y_MIN_VALUE;
+    // }
+    // // Serial.println(YData);
 
-    int pwmValue = map(YData, COLOR_Y_MAX_VALUE, COLOR_Y_MIN_VALUE, 0, 255);
-    int neopixelValue = map(pwmValue, 0, 255, 0, 250);
-    for (int i = 0; i < LED_COUNT; i++)
-    {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 0);
-        ::vTaskDelay(pdMS_TO_TICKS(2));
-    }
+    // int pwmValue = map(YData, COLOR_Y_MAX_VALUE, COLOR_Y_MIN_VALUE, 0, 255);
+    // int neopixelValue = map(pwmValue, 0, 255, 0, 250);
+    // for (int i = 0; i < LED_COUNT; i++)
+    // {
+    //     myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 0);
+    //     ::vTaskDelay(pdMS_TO_TICKS(2));
+    // }
     
     // Serial.flush();
-    colorStopFlag = false;
-    // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-    ::vTaskDelay(pdMS_TO_TICKS(50));
+    // colorStopFlag = false;
+    // // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+    // ::vTaskDelay(pdMS_TO_TICKS(50));
     
     // vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(100));
   } 
@@ -322,7 +323,7 @@ static void hallSensorTask(void*)
   {
     
     hallSensorValue = analogRead(hallSensor_Pin);
-    // Serial.printf("Value : %d\r\n", hallSensorValue);
+    Serial.printf("Value : %d\r\n", hallSensorValue);
 
     if (hallSensorValue <= HALL_TARGET_VALUE)
     {
@@ -375,16 +376,16 @@ FLASHMEM __attribute__((noinline)) void setup() {
         myNeopixel->pickOneLED(i, myNeopixel->strip->Color(0, 0, 0), 0, 10);
     }
 
-    for (int i = 0; i < 10; i++)
-    {
-      if(tcs3430.begin())
-      {
-        Serial.println("Begin tcs3430 ColorSensor");
-        break;
-      }
-      Serial.println("Please check that the IIC device is properly connected");
-      delay(500);
-    }
+    // for (int i = 0; i < 10; i++)
+    // {
+    //   if(tcs3430.begin())
+    //   {
+    //     Serial.println("Begin tcs3430 ColorSensor");
+    //     break;
+    //   }
+    //   Serial.println("Please check that the IIC device is properly connected");
+    //   delay(500);
+    // }
     stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 50);
     ::delay(100);
 #ifdef MYLITTLEFS
@@ -490,14 +491,20 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
   if(_toggleFlag == ON)
   {
     dataToSend.colorState = COLOR_ON;
-    vTaskResume(colorSensorHandle);
+    // vTaskResume(colorSensorHandle);
+    for (int i = 0; i < LED_COUNT; i++)
+    {
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), 200, 0);
+        ::vTaskDelay(pdMS_TO_TICKS(2));
+    }
+
     sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
     // ::vTaskDelay(pdMS_TO_TICKS(10));
   }
   else
   {
     dataToSend.colorState = COLOR_OFF;
-    vTaskSuspend(colorSensorHandle);
+    // vTaskSuspend(colorSensorHandle);
     sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
     // ::vTaskDelay(pdMS_TO_TICKS(10));
     for (int i = 0; i < LED_COUNT; i++)
@@ -628,7 +635,7 @@ static void buttonTask(void*)
           if(dataToSend.servoState == SERVO_CLOSED)
           {
             //dataToSend.servoState = SERVO_OPENED;
-            //Serial.println("Servo Open");
+            Serial.println("Servo Open");
 #ifdef MYSERVO
             myServo->openServo();
 #endif
