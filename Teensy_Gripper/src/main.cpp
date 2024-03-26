@@ -2,7 +2,9 @@
 #include "avr/pgmspace.h"
 #include <HardwareSerial.h>
 #include <Arduino.h>
-#include <DFRobot_TCS3430.h>
+#include <Wire.h>
+#include <SPI.h>
+//#include <DFRobot_TCS3430.h>
 #include "neopixel.h"
 #include "myServo.h"
 #include "MyLittleFS.h"
@@ -65,7 +67,7 @@ MyLittleFS* myLittleFS = new MyLittleFS();
 #endif
 MyNeopixel* myNeopixel = new MyNeopixel(12, ringNeopixel_Pin);
 MyNeopixel* stateNeopixel = new MyNeopixel(1, singNeopixel_Pin);
-DFRobot_TCS3430 tcs3430;
+//DFRobot_TCS3430 tcs3430;
 
 
 
@@ -81,10 +83,19 @@ static void uartTask(void* ){
   //TickType_t xLastWakeTime = xTaskGetTickCount();
   while(true){
       
-      String text = HWSERIAL.readStringUntil('\r');   // ToString() 으로 전달 받음 
+      // char ch = HWSERIAL.read();
+      // Serial.println(ch);
+      delay(100);
+      // if(ch == -1)
+      // {
+      //   Serial.println(ch);
+      // }
 
+      String text = HWSERIAL.readStringUntil('\r');   // ToString() 으로 전달 받음 
+      
       if(text.length() != structSize *2  && text.length() > 0)  
       {
+
         // Serial.printf("[%d] > 0 %s\r\n",  text.length() ,text.c_str());
         Serial.printf("[%d] %s\r\n",  text.length() ,text.c_str());
         dataToSend.response = 0xFF;
@@ -128,13 +139,13 @@ static void uartTask(void* ){
         {
             case RESPONSE_SERVO_OPEN:
               // myServo->openServo();
-              toggleHallSensor(ON);
-              vTaskDelay(pdMS_TO_TICKS(100));
-              myServo->openServo(ON);
+              // toggleHallSensor(ON);
+              // vTaskDelay(pdMS_TO_TICKS(100));
+              myServo->openServo();
               stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(0, 255, 0), 10, 1);
               vTaskDelay(pdMS_TO_TICKS(10));
               sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-              toggleHallSensor(OFF);
+              // toggleHallSensor(OFF);
               break;
 
             case RESPONSE_SERVO_CLOSE:
@@ -254,29 +265,29 @@ static void operationTask(void*)
 
 void readColorSensor(int _delay)
 {
-  uint16_t YData = tcs3430.getYData();
+  // uint16_t YData = tcs3430.getYData();
 
-    // Send
-  // Serial.printf("Y Value : %d\r\n", YData);
-  if(YData >= COLOR_Y_MAX_VALUE)
-  {
-    YData = COLOR_Y_MAX_VALUE;
-  }
-  else if(YData <= COLOR_Y_MIN_VALUE)
-  {
-    YData = COLOR_Y_MIN_VALUE;
-  }
-  Serial.println(YData);
+  //   // Send
+  // // Serial.printf("Y Value : %d\r\n", YData);
+  // if(YData >= COLOR_Y_MAX_VALUE)
+  // {
+  //   YData = COLOR_Y_MAX_VALUE;
+  // }
+  // else if(YData <= COLOR_Y_MIN_VALUE)
+  // {
+  //   YData = COLOR_Y_MIN_VALUE;
+  // }
+  // Serial.println(YData);
 
-  int pwmValue = map(YData, COLOR_Y_MAX_VALUE, COLOR_Y_MIN_VALUE, 0, 255);
-  int neopixelValue = map(pwmValue, 0, 255, 0, 250);
-  for (int i = 0; i < LED_COUNT; i++)
-  {
-      myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 0);
-      ::vTaskDelay(pdMS_TO_TICKS(2));
-  }
-  sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
-  ::vTaskDelay(pdMS_TO_TICKS(_delay));
+  // int pwmValue = map(YData, COLOR_Y_MAX_VALUE, COLOR_Y_MIN_VALUE, 0, 255);
+  // int neopixelValue = map(pwmValue, 0, 255, 0, 250);
+  // for (int i = 0; i < LED_COUNT; i++)
+  // {
+  //     myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), neopixelValue, 0);
+  //     ::vTaskDelay(pdMS_TO_TICKS(2));
+  // }
+  // sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+  // ::vTaskDelay(pdMS_TO_TICKS(_delay));
 }
 
 static void colorSensorTask(void*)
@@ -330,21 +341,23 @@ static void hallSensorTask(void*)
       hallCount++;
       if(hallCount > 10)
       {
-        //Serial.println("Arrived at Target Height");
+        Serial.println("Arrived at Target Height");
         dataToSend.hallState = HALL_ARRIVED;
-        sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
+        //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));    // 해당값 되면 보냄
       }   
     }
     else if(hallSensorValue <= HALL_MID_VALUE)
     {
-      dataToSend.hallState = HALL_NEARBY;      
+      dataToSend.hallState = HALL_NEARBY;
+      //sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));  
     }
     else    
     {
       hallCount = 0;
       dataToSend.hallState = HALL_FAR;
+      
     }
-    
+    sendPacket((uint8_t*)&dataToSend, sizeof(dataToSend));
     ::vTaskDelay(pdMS_TO_TICKS(100));
   }
 }
@@ -359,6 +372,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     Serial.begin(115200);
     // Serial.begin(250000);
     HWSERIAL.setTimeout(100);
+    // HWSERIAL.begin(115200);
     HWSERIAL.begin(500000);
     stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 255, 255), 20, 50);
     Wire.begin();
@@ -458,7 +472,7 @@ bool sendPacket(uint8_t* _data, size_t len)
   // Serial.println("-----SendPacket------");
   for (size_t i = 0; i < len; i++)
   {
-    //Serial.printf("0x%x \r\n", _data[i]);
+    // Serial.printf("0x%x \r\n", _data[i]);
     HWSERIAL.write(_data[i]);
     vTaskDelay(pdMS_TO_TICKS(1));
   }
@@ -494,7 +508,7 @@ void toggleColorSensor(ToggleFlag _toggleFlag)
     // vTaskResume(colorSensorHandle);
     for (int i = 0; i < LED_COUNT; i++)
     {
-        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), 200, 0);
+        myNeopixel->pickOneLED(i, myNeopixel->strip->Color(255, 255, 255), 10, 0);
         ::vTaskDelay(pdMS_TO_TICKS(2));
     }
 
@@ -604,7 +618,9 @@ static void blink(void*) {
 
 static void tickTock(void*) {
     while (true) {
-        ::Serial.printf("Flow : %lu\r\n", systemCount++);
+        ::Serial.printf("Flow : %lu\r\n", systemCount);
+        ::Serial2.printf("Flow : %lu\r\n", systemCount);
+        systemCount++;
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
     }
 }

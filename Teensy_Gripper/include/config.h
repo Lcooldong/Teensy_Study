@@ -1,10 +1,10 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define OLD_PINOUT
-//#define NEW_PINOUT
+//#define OLD_PINOUT
+#define NEW_PINOUT
 
-#define HWSERIAL Serial2  // RX2 : 7, TX2 : 8
+#define HWSERIAL Serial2  // RX2 : 7 (Green), TX2 : 8 (White)
 
 
 #define COLOR_Y_MIN_VALUE 250
@@ -25,8 +25,10 @@
 #define SERVO_INITIAL_POS  0
 #define SERVO_TARGET_POS  70
 
-#define SERVO2_INITIAL_POS 10
-#define SERVO2_TARGET_POS  60
+#define SERVO2_INITIAL_POS 70
+#define SERVO2_TARGET_POS  35
+
+
 
 #define SERVO_CLOSED  0x06
 #define SERVO_OPENED  0xF2
@@ -51,14 +53,14 @@ const int button_Pin = 21;
 #endif
 
 #ifdef NEW_PINOUT
-const int Servo_Pin = 16;
-const int Servo2_Pin = 17;
+const int Servo_Pin = 18;
+const int Servo2_Pin = 19;
 
-const int singNeopixel_Pin = 18;
-const int ringNeopixel_Pin = 19;
+const int singNeopixel_Pin = 2;
+const int ringNeopixel_Pin = 3;
 
-const int SDA_Pin = 20;
-const int SCL_Pin = 21;
+//const int SDA_Pin = 20;
+//const int SCL_Pin = 21;
 
 const int hallSensor_Pin = 22;
 const int button_Pin = 23;

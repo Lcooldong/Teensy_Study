@@ -33,11 +33,11 @@
 //#define configUSE_TIME_SLICING 1
 
 #define DEBUG
-#define AUTO_SERVO
-//#define SERIAL_SERVO
+//#define AUTO_SERVO
+#define SERIAL_SERVO
 
 const int ServoPotentionMeter_Pin = 14;
-const int Servo_Pin = 16;
+const int Servo_Pin = 2;
 int hallSensorValue = 0;
 
 const int blinkInterval =  300;
