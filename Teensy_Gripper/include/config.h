@@ -4,7 +4,10 @@
 //#define OLD_PINOUT
 #define NEW_PINOUT
 
-#define HWSERIAL Serial2  // RX2 : 7 (Green), TX2 : 8 (White)
+//#define MG996R_SERVO
+#define MG90S
+
+#define HWSERIAL Serial2  // RX2 : 7 (Green), TX2 : 8 (White or Blue)
 
 
 #define COLOR_Y_MIN_VALUE 250
@@ -25,9 +28,15 @@
 #define SERVO_INITIAL_POS  0
 #define SERVO_TARGET_POS  70
 
+#ifdef MG996R_SERVO
 #define SERVO2_INITIAL_POS 70
 #define SERVO2_TARGET_POS  35
+#endif
 
+#ifdef MG90S
+#define SERVO2_INITIAL_POS 35
+#define SERVO2_TARGET_POS  70
+#endif
 
 
 #define SERVO_CLOSED  0x06
