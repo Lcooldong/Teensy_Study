@@ -9,6 +9,7 @@ void MyNeopixel::InitNeopixel()
 {
     // Adafruit_NeoPixel strip(LED_COUNT, BUILTIN_LED, NEO_GRB + NEO_KHZ800);
     strip->begin();
+    
 }
 
 void MyNeopixel::pickOneLED(uint8_t ledNum, uint32_t color, uint8_t brightness, uint32_t wait){
