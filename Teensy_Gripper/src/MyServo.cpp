@@ -47,7 +47,7 @@ void MyServo::rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
         if(pos < targetPos)
         {
           
-          for (int i = 0; i <= targetPos; i++)
+          for (int i = pos; i <= targetPos; i++)
           {
             //gripperServo.write(i);
             _servo->write(i);
