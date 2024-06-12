@@ -374,9 +374,17 @@ FLASHMEM __attribute__((noinline)) void setup() {
     HWSERIAL.setTimeout(100);
     // HWSERIAL.begin(115200);
     HWSERIAL.begin(500000);
+
+  
+#ifdef MYLITTLEFS
+    myLittleFS->initLittleFS();
+#endif
+    ::delay(100);
+
     stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 255, 255), 20, 50);
     Wire.begin();
     myServo->initServo();
+
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::pinMode(button_Pin, arduino::INPUT_PULLUP);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
@@ -401,12 +409,30 @@ FLASHMEM __attribute__((noinline)) void setup() {
     //   delay(500);
     // }
     stateNeopixel->pickOneLED(0, stateNeopixel->strip->Color(255, 0, 0), 20, 50);
-    ::delay(100);
-#ifdef MYLITTLEFS
-    myLittleFS->initLittleFS();
-#endif
-    
 
+    ::delay(1000);
+
+    Serial.printf("CURRENT : %d\r\n", myServo->lockerPos);
+    ::delay(1000);
+    for (int i = SERVO2_INITIAL_POS; i >= SERVO2_TARGET_POS; i--)
+    {
+      myServo->lockerServo.write(i);
+      Serial.printf("Up Degree : %d\r\n", i);
+      delay(10);
+    }  
+    myLittleFS->writeServoLog();
+
+    delay(100);
+
+    for (int i = SERVO2_TARGET_POS; i <= SERVO2_INITIAL_POS; i++)
+    {
+      myServo->lockerServo.write(i);
+      Serial.printf("Up Degree : %d\r\n", i);
+      delay(10);
+    }  
+    myLittleFS->writeServoLog();
+
+    delay(100);
 
     if (CrashReport) {
         ::Serial.print(CrashReport);
@@ -420,7 +446,7 @@ FLASHMEM __attribute__((noinline)) void setup() {
     ::xTaskCreate(blink, "blink", 128, nullptr, 1, nullptr);
     // ::xTaskCreate(tickTock, "tickTock", 1024, nullptr, 1, nullptr);
     ::xTaskCreate(uartTask, "uartTask", 8192, nullptr, 1, nullptr);
-    ::xTaskCreate(myUartTask, "myUartTask", 8192, nullptr, 1, nullptr);
+    //::xTaskCreate(myUartTask, "myUartTask", 8192, nullptr, 1, nullptr);
     // ::xTaskCreate(operationTask, "operationTask", 1024, nullptr, 1, &operationHandle);
     ::xTaskCreate(colorSensorTask, "ColorSensor", 1024, nullptr, 2, &colorSensorHandle);
     ::xTaskCreate(hallSensorTask, "hallSensorTask", 512, nullptr, 2, &hallSensorHandle);
@@ -440,9 +466,12 @@ FLASHMEM __attribute__((noinline)) void setup() {
 
     // ::vTaskSuspend(operationHandle);
 
+    
+
     ::vTaskSuspend(colorSensorHandle);
     ::vTaskSuspend(hallSensorHandle);
     ::vTaskStartScheduler();
+    
     
 }
 

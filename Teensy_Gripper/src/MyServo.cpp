@@ -22,6 +22,7 @@ void MyServo::initServo()
 {
     gripperServo.attach(Servo_Pin);
     lockerServo.attach(Servo2_Pin);
+
 }
 
 void MyServo::rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
@@ -91,10 +92,13 @@ void MyServo::rotateServo(PWMServo *_servo, int targetPos, uint32_t millisecond)
 void MyServo::openServo()
 {
   //gripperServo.attach(Servo_Pin);
+  vTaskDelay(pdMS_TO_TICKS(100));
+
   rotateServo(&gripperServo, SERVO_INITIAL_POS, 5);
   Serial.println("========Servo Open========");
   dataToSend.servoState = SERVO_OPENED;
   myLittleFS->writeServoLog();
+
   //gripperServo.detach();
 }
 
@@ -132,10 +136,13 @@ void MyServo::openServo(bool hallRangeOn)
 void MyServo::closeServo()
 {
   //gripperServo.attach(Servo_Pin);
+  vTaskDelay(pdMS_TO_TICKS(100));
+
   rotateServo(&gripperServo, SERVO_TARGET_POS, 5);
   Serial.println("========Servo Close========");
   dataToSend.servoState = SERVO_CLOSED;
   myLittleFS->writeServoLog();
+
   //gripperServo.detach();
 }
 

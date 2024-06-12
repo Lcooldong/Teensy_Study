@@ -7,11 +7,14 @@
 class MyServo
 {
 private:
-    PWMServo gripperServo;
-    PWMServo lockerServo;
+    // PWMServo gripperServo;
+    // PWMServo lockerServo;
 public:
     MyServo(/* args */);
     ~MyServo();
+
+    PWMServo gripperServo;
+    PWMServo lockerServo;
 
     uint8_t gripperPos;
     uint8_t lockerPos;
