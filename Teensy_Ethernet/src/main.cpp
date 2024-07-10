@@ -147,9 +147,20 @@ bool connectToClient(ConnectionState &state,
 void processConnection(ConnectionState &state,
                        std::vector<ConnectionState> &list);
 
+const int BUILTIN_LED = 13;
+uint64_t breathTime = 0;
+uint8_t breathValue = 0;
+bool breathDirection = false;
+void breath(uint32_t _delay);
+
+uint64_t sendTime = 0;
+void sendData(uint32_t _delay);
+
+
 // Main program setup.
 void setup() {
   Serial.begin(115200);
+  pinMode(BUILTIN_LED, OUTPUT);
   while (!Serial && millis() < 4000) {
     // Wait for Serial to
   }
@@ -258,6 +269,8 @@ static inline bool isClient(const ConnectionState &s) {
 
 // Main program loop.
 void loop() {
+  breath(10);
+
   EthernetClient client = server.accept();
   if (client) {
     // We got a connection!
@@ -308,7 +321,20 @@ void loop() {
   if (conns.size() != size) {
     printf("Connection count: %zu\r\n", conns.size());
   }
+
+  if(millis() - sendTime > 2000)
+  {
+    sendTime = millis();
+    
+   
+  }
 }
+
+
+
+
+
+
 
 // Connects back to the client and returns whether the connection was
 // successful. This adds any new connection to the given list.
@@ -567,4 +593,32 @@ void processConnection(ConnectionState &state,
         return;
     }
   }
+}
+
+void breath(uint32_t _delay)
+{
+  if(millis() - breathTime >= _delay)
+  {
+    breathTime = millis();
+    if(!breathDirection)
+    { 
+      breathValue++;
+    }
+    else
+    {
+      breathValue--;
+    }
+
+    if(breathValue >= 255)
+    {
+      breathDirection = true;
+    }
+    else if(breathValue <= 0)
+    {
+      breathDirection = false;
+    }
+    analogWrite(BUILTIN_LED, breathValue);
+
+  }
+
 }

@@ -1,8 +1,9 @@
 #include <Arduino.h>
 #include "arduino_freertos.h"
 #include "avr/pgmspace.h"
-//#include <SoftwareSerial.h>   // Not Working in my case
+// #include <SoftwareSerial.h>   // Not Working in my case
 #include <HardwareSerial.h>
+// #include <SoftwareSerial.h>
 
 //#undef configUSE_TIME_SLICING
 //#define configUSE_TIME_SLICING 1
@@ -11,8 +12,8 @@
 #define HWSERIAL Serial2
 
 const int Servo_Pin = 15;
-const int SoftRx_Pin = 5;
-const int SoftTx_Pin = 6;
+const int SoftRx_Pin = 18;
+const int SoftTx_Pin = 19;
 int hallSensorValue = 0;
 
 const int blinkInterval =  300;
@@ -22,7 +23,7 @@ bool flag = false;
 BaseType_t xReturned;
 TaskHandle_t xHandle = NULL;
 
-//SoftwareSerial mySofSerial(SoftRx_Pin, SoftTx_Pin);
+// SoftwareSerial mySofSerial(SoftRx_Pin, SoftTx_Pin);
 
 
 static void task1(void*) {
@@ -39,12 +40,12 @@ static void task2(void*) {
     while (true) {
         ::Serial.println("TICK");
         HWSERIAL.println("HW : TICK");
-  //      mySofSerial.println("SW : TICK");
+        // mySofSerial.println("SW : TICK");
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
 
         ::Serial.println("TOCK");
         HWSERIAL.println("HW : TOCK");
-//        mySofSerial.println("SW : TOCK");
+        // mySofSerial.println("SW : TOCK");
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
     }
 }
@@ -85,7 +86,7 @@ static void uartTask(void* ){
 FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.begin(115'200);
     HWSERIAL.begin(115200);
-  //  mySofSerial.begin(115200);
+    // mySofSerial.begin(115200);
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
 

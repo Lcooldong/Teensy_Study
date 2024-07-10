@@ -4,7 +4,7 @@
 #include <SPI.h>
 
 #define SONAR_COUNT 8
-
+#define MIN_DISTANCE 10
 
 uint64_t sonarTime = 0;
 uint64_t ledBlinkTime = 0;
@@ -158,10 +158,10 @@ void getSonarDistance(int _num)
       {
         Serial.printf("[%d]:", _num);
         sonarSensor[_num].distance=(sonarSensor[_num].data[1]<<8)+sonarSensor[_num].data[2];
-        if(sonarSensor[_num].distance>30)
+        if(sonarSensor[_num].distance >= MIN_DISTANCE)
           {
             // Serial.printf("%.2f cm", sonarSensor[_num].distance/10);
-              Serial.printf("%.2f",sonarSensor[_num].distance/10);
+              Serial.printf("%5.2f",sonarSensor[_num].distance/10);
           }
           else 
           {
