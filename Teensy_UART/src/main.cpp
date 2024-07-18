@@ -1,9 +1,9 @@
 #include <Arduino.h>
 #include "arduino_freertos.h"
 #include "avr/pgmspace.h"
-// #include <SoftwareSerial.h>   // Not Working in my case == HardwareSerial Pinout
+#include <SoftwareSerial.h>   // Not Working in my case == HardwareSerial Pinout
 #include <HardwareSerial.h>
-// #include <SoftwareSerial.h>
+
 
 //#undef configUSE_TIME_SLICING
 //#define configUSE_TIME_SLICING 1
@@ -12,18 +12,26 @@
 #define HWSERIAL Serial2
 
 const int Servo_Pin = 15;
-const int SoftRx_Pin = 18;
-const int SoftTx_Pin = 19;
-int hallSensorValue = 0;
 
 const int blinkInterval =  300;
 const int serialInterval = 1000;
 bool flag = false;
+int hallSensorValue = 0;
 
 BaseType_t xReturned;
 TaskHandle_t xHandle = NULL;
 
-// SoftwareSerial mySofSerial(SoftRx_Pin, SoftTx_Pin);
+
+// Best for Teensy 4 & 4.1 & MICROMOD Fixed
+//SoftwareSerial mySerial(0, 1); // RX,TX
+//SoftwareSerial mySerial(7, 8);
+//SoftwareSerial mySerial(15, 14);
+//SoftwareSerial mySerial(16, 17);
+//SoftwareSerial mySerial(21, 20);
+//SoftwareSerial mySerial(25, 24);
+//SoftwareSerial mySerial(28, 29);
+//SoftwareSerial mySerial(34, 35);  // Teensy 4.1 only
+
 
 
 static void task1(void*) {
@@ -40,12 +48,12 @@ static void task2(void*) {
     while (true) {
         ::Serial.println("TICK");
         HWSERIAL.println("HW : TICK");
-        // mySofSerial.println("SW : TICK");
+        // mySerial.println("SW : TICK");
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
 
         ::Serial.println("TOCK");
         HWSERIAL.println("HW : TOCK");
-        // mySofSerial.println("SW : TOCK");
+        // mySerial.println("SW : TOCK");
         ::vTaskDelay(pdMS_TO_TICKS(serialInterval));
     }
 }
@@ -62,13 +70,13 @@ static void uartTask(void* ){
       {
         Serial.println("Press a");
         HWSERIAL.println("HW : Press a");
-//        mySofSerial.println("SW : Press a");
+//        mySerial.println("SW : Press a");
       }
       else if (text == 'b')
       {
         Serial.println("Press b");
         HWSERIAL.println("HW : Press b");
-//        mySofSerial.println("SW : Press b");
+//        mySerial.println("SW : Press b");
       }
       
       //vTaskDelay(pdMS_TO_TICKS(1));
@@ -86,7 +94,7 @@ static void uartTask(void* ){
 FLASHMEM __attribute__((noinline)) void setup() {
     ::Serial.begin(115'200);
     HWSERIAL.begin(115200);
-    // mySofSerial.begin(115200);
+    // mySerial.begin(115200);
     ::pinMode(arduino::LED_BUILTIN, arduino::OUTPUT);
     ::digitalWriteFast(arduino::LED_BUILTIN, arduino::HIGH);
 
