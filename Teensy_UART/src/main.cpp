@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "arduino_freertos.h"
 #include "avr/pgmspace.h"
-// #include <SoftwareSerial.h>   // Not Working in my case
+// #include <SoftwareSerial.h>   // Not Working in my case == HardwareSerial Pinout
 #include <HardwareSerial.h>
 // #include <SoftwareSerial.h>
 

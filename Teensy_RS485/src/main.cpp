@@ -57,6 +57,7 @@ void loop() {
       break;
     }
   }
+  
   // PC 에서 요청 받을 경우 동작
   // if(RS485.available())
   // {
