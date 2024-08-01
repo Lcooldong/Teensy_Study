@@ -39,6 +39,7 @@ uint64_t rs485Time = 0;
 uint64_t returnCount = 0;
 int count = 0;
 uint8_t readCount = 0;
+uint64_t RS485_TimeOut = 0;
 
 uint16_t CRC_RESULT;
 uint8_t CRC_L;
@@ -89,6 +90,9 @@ ModbusMaster node;
 bool state = true;
 
 void initModbusCRC(CRC16* _crc);
+uint8_t* caculateModbusCRC(byte* _packet, uint8_t _length);
+void printPacket();
+void pollModbus();
 
 void setup() {
   Serial.begin(115200);
@@ -103,22 +107,6 @@ void setup() {
   Serial.println(__FILE__);
   RS485.printf("Start RS485\r\n");
   
-  // uint8_t arr[] = { 0xFE, 0x10, 0x04, 0x00, 0x01, 0x00, 0x01, 0x60, 0x00}; 
-
-  // for (int i = 0; i < (int)sizeof(sample) - 2; i++)
-  // {
-  //   crc.add(sample[i]);
-  // }
-  
-  // uint16_t CRC_RESULT = crc.calc();
-
-  // CRC_L = CRC_RESULT & 0b1111'1111;
-  // CRC_H = CRC_RESULT >> 8;
-
-  // Serial.printf( "CRC_L : 0x%X | CRC_H : 0x%X => %X\r\n", CRC_L, CRC_H , CRC_RESULT);
-
-  // initModbusCRC(&crc);
-
   Serial.println("--Start--");
 }
 
@@ -126,6 +114,7 @@ void setup() {
 
 void loop() {
 
+  // Test
   if(Serial.available())
   {
     char cmd = Serial.read();
@@ -144,14 +133,6 @@ void loop() {
         }
         Serial.println();
 
-        int cnt1 = 0;
-        while (cnt1 < 8)
-        {
-          char c1 = RS485.read();
-          Serial.printf("+++ 0x%X\r\n", c1);
-          cnt1++;
-          delay(1);
-        }
         break;         
       }
   
@@ -162,6 +143,7 @@ void loop() {
         {
           RS485.write(sendCoil2[i]);
           Serial.printf("0x%X | ",sendCoil2[i]);
+          delay(1);
         }
         Serial.println();
 
@@ -169,6 +151,16 @@ void loop() {
 
         break;
       }
+
+      case '3':
+        Serial.println("***********myCoils*************");
+        for (uint8_t i = 0; i < 10; i++)
+        {
+          Serial.printf("[%d] : 0x%X\r\n", i,my_Coils[i]);
+        }
+        Serial.println("******************************");
+
+        break;
 
     }
 
@@ -181,46 +173,86 @@ void loop() {
   {
     lastTime = millis();
     count++;
-    // Serial.printf("[%d]\r\n", count);
-    // uint8_t resultMain;
-    // // resultMain = node.readCoils(0x0, 1);
-    // resultMain = node.writeSingleCoil(0x03, 0xFF);
-    // if(resultMain == node.ku8MBSuccess)
-    // {
-    //   Serial.println(node.getResponseBuffer(0x01));
-    // }
 
-    
-  
-    // byte returnBytes[8];
-    // RS485.readBytes(returnBytes, sizeof(returnBytes));
-    // for (uint8_t i = 0; i < sizeof(returnBytes); i++)
-    // {
-    //   Serial.printf("0x%X || ", returnBytes[i]);
-    // }
-    // Serial.println();
-
-    // for (int i = 0; i < (int)sizeof(returnBytes) - 2; i++)
-    // {
-    //   crc.add(returnBytes[i]);
-    // }
-    
-    // uint16_t CRC_RESULT = crc.calc();
-
-    // CRC_L = CRC_RESULT & 0b1111'1111;
-    // CRC_H = CRC_RESULT >> 8;
-
-    // Serial.printf( "CRC_L : 0x%X | CRC_H : 0x%X || [%X]\r\n", CRC_L, CRC_H , CRC_RESULT);
-
-    // initModbusCRC(&crc);
     
    
     
   }
+  pollModbus();
 
-  
+  indicator->breathe(5);
+}
 
-#ifdef RECEIVE
+
+
+
+
+void initModbusCRC(CRC16* _crc)
+{
+  _crc->reset(CRC16_MODBUS_POLYNOME,
+            CRC16_MODBUS_INITIAL,
+            CRC16_MODBUS_XOR_OUT,
+            CRC16_MODBUS_REV_IN,
+            CRC16_MODBUS_REV_OUT);
+}
+
+uint8_t* caculateModbusCRC(byte* _packet, uint8_t _length) 
+{
+    static uint8_t _crcArray[2] = {0,};
+    uint16_t _crcResult = 0;
+
+    for (int i = 0; i < _length - 2; i++)
+    {
+      crc.add(_packet[i]);
+      // Serial.printf("INPUT ==> 0x%02X\r\n", _packet[i]);
+    }
+    
+    _crcResult = crc.calc();
+
+    _crcArray[0] = _crcResult & 0b1111'1111;
+    _crcArray[1] = _crcResult >> 8;
+
+    // Serial.printf( "CRC_L : 0x%02X | CRC_H : 0x%02X => %04X\r\n", _crcArray[0], _crcArray[1] , CRC_RESULT);
+
+    initModbusCRC(&crc);
+
+    return (uint8_t*)_crcArray;
+}
+
+
+void printPacket()
+{
+  switch (readCount)
+  {
+  case 1:
+    Serial.printf("[%d]FC         : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 2:
+    Serial.printf("[%d]Address_H  : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 3:
+    Serial.printf("[%d]Address_L  : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 4:
+    Serial.printf("[%d]Coil_Value : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 5:
+    Serial.printf("[%d]Coil_00    : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 6:
+    Serial.printf("[%d]Checksum_L : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  case 7:
+    Serial.printf("[%d]Checksum_H : 0x%02X\r\n", readCount, recv[readCount]);
+    break;
+  }
+  Serial.println("------------------------------------------------------");
+}
+
+
+void pollModbus()
+{
+  #ifdef RECEIVE
   // Receive
   if(RS485.available())
   {
@@ -228,12 +260,12 @@ void loop() {
     if(millis() - rs485Time > 1)
     {
       rs485Time = millis();
-    
       int ch = RS485.read();
 
       if(ch != -1)
       {
         Serial.printf("READ : 0x%X\r\n", ch);
+        // RS485_TimeOut = 0;
       }
       
       if(ch == SLAVE_ID && readCount == 0)
@@ -241,93 +273,71 @@ void loop() {
         Serial.printf("[%d]ID         : 0x%X\r\n", readCount, SLAVE_ID);
         recv[0] = SLAVE_ID;
         readCount++;
+        
       }
-      else if(readCount > 0 && readCount < 8) 
+      else if(readCount > 0 && readCount < 8)
       {  
         recv[readCount] = ch;
         // Serial.printf( "[%d]->0x%X\r\n" , readCount, recv[readCount]);
-        switch (readCount)
-        {
-        case 1:
-          Serial.printf("[%d]FC         : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 2:
-          Serial.printf("[%d]Address_H  : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 3:
-          Serial.printf("[%d]Address_L  : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 4:
-          Serial.printf("[%d]Coil_Value : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 5:
-          Serial.printf("[%d]Coil_00    : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 6:
-          Serial.printf("[%d]Checksum_L : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        case 7:
-          Serial.printf("[%d]Checksum_H : 0x%X\r\n", readCount, recv[readCount]);
-          break;
-        }
+        printPacket();
         readCount++;
 
         if(readCount == 8)
         {     
             for (int i = 0; i < (int)sizeof(recv); i++)
             {
-              Serial.printf("0x%X | ", recv[i]);
+              Serial.printf("0x%02X | ", recv[i]);
             }
             Serial.println();
-            
+                        
+            uint8_t* crcReceived = caculateModbusCRC(recv, sizeof(recv));
+            int startAddress = recv[2] * 256 + recv[3];
+            Serial.printf("StartAddress : %d\r\n", startAddress);
+            // Serial.printf("CRC ==> 0x%02X  | 0x%02X\r\n", crcReceived[0], crcReceived[1]);
 
-            for (int i = 0; i < (int)sizeof(recv) - 2; i++)
-            {
-              crc.add(recv[i]);
-            }
-            
-            CRC_RESULT = crc.calc();
-
-            CRC_L = CRC_RESULT & 0b1111'1111;
-            CRC_H = CRC_RESULT >> 8;
-
-            Serial.printf( "CRC_L : 0x%02X | CRC_H : 0x%02X => %04X\r\n", CRC_L, CRC_H , CRC_RESULT);
-
-            initModbusCRC(&crc);
-
-            if(CRC_L == recv[6] && CRC_H == recv[7])
+            if(crcReceived[0] == recv[6] && crcReceived[1] == recv[7])
             {
               Serial.printf("Receive Complete \r\n");  
 
-              switch (recv[1])
-              {
+              switch (recv[1]){
+
               case READ_COILS:
               {
-                // byte my_Coils[] = {0x01, 0x00, 0x01};
-                byte targetCoil = my_Coils[recv[3]];
+                
+                byte targetCoil = 0;
+                uint16_t numOfCoils = recv[5];
+                
+                for (uint8_t i = 0; i < numOfCoils; i++)
+                {
+                  targetCoil += my_Coils[startAddress + i] << i;
+                }
+
                 byte readCoils[] = {0x01, 0x01, 0x01, targetCoil, 0x00, 0x00};
 
-                for (int i = 0; i < (int)sizeof(readCoils) - 2; i++)
+                uint8_t* crcReadCoil = caculateModbusCRC(readCoils, sizeof(readCoils));
+   
+                readCoils[4] = crcReadCoil[0];
+                readCoils[5] = crcReadCoil[1];
+                
+                
+                Serial.println("\r\n===============ReadCoil RX===============");
+                for (uint8_t i = 0; i < sizeof(readCoils); i++)
                 {
-                  crc.add(readCoils[i]);
+                  Serial.printf("0x%X ", readCoils[i]);
                 }
+                Serial.println("\r\n===========================================");
                 
-                CRC_RESULT = crc.calc();
 
-                CRC_L = CRC_RESULT & 0b1111'1111;
-                CRC_H = CRC_RESULT >> 8;
-
-                Serial.printf( "CRC_L : 0x%02X | CRC_H : 0x%02X => %04X\r\n", CRC_L, CRC_H , CRC_RESULT);
-
-                readCoils[sizeof(readCoils) - 2] = CRC_L;
-                readCoils[sizeof(readCoils) - 1] = CRC_H;
-
-                initModbusCRC(&crc);
-                
                 RS485.write(readCoils, sizeof(readCoils));
                 RS485.flush(); 
 
-                readCount = 0;
+                
+                
+                break;
+              }
+              case READ_HOLDING_REGISTERS:
+              {
+                
                 break;
               }
 
@@ -335,11 +345,11 @@ void loop() {
               {
                 if(recv[4] != 0)
                 {
-                  my_Coils[recv[3]] = 0x01;         
+                  my_Coils[startAddress] = 0x01;  
                 }
                 else
                 {
-                  my_Coils[recv[3]] = 0x00;
+                  my_Coils[startAddress] = 0x00;
                 }
                 
                 // for (uint8_t i = 0; i < sizeof(recv); i++)
@@ -350,11 +360,6 @@ void loop() {
                 RS485.write(recv,sizeof(recv));
                 RS485.flush(); 
 
-                // for (int i = 0; i < (int)sizeof(recv); i++)
-                // {
-                //   recv[i] = 0;
-                // }
-                readCount = 0;
                 break;
               }
                 
@@ -363,8 +368,14 @@ void loop() {
               default:
                 break;
               }
+              
+              readCount = 0;
             }
 
+        }
+        else if(readCount > 8)
+        {
+          readCount = 0;
         }
 
       }
@@ -373,23 +384,4 @@ void loop() {
 
   }
 #endif
-  
-
-  indicator->breathe(5);
-}
-
-
-void writeCoil(uint8_t _address)
-{
-  uint8_t dataToSend[] = {0, };
-}
-
-
-void initModbusCRC(CRC16* _crc)
-{
-  _crc->reset(CRC16_MODBUS_POLYNOME,
-            CRC16_MODBUS_INITIAL,
-            CRC16_MODBUS_XOR_OUT,
-            CRC16_MODBUS_REV_IN,
-            CRC16_MODBUS_REV_OUT);
 }
