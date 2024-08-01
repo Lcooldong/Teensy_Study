@@ -265,7 +265,6 @@ void pollModbus()
       if(ch != -1)
       {
         Serial.printf("READ : 0x%X\r\n", ch);
-        // RS485_TimeOut = 0;
       }
       
       if(ch == SLAVE_ID && readCount == 0)
@@ -337,6 +336,7 @@ void pollModbus()
               }
               case READ_HOLDING_REGISTERS:
               {
+                Serial.printf("Read Holding Registers\r\n");
                 
                 break;
               }
