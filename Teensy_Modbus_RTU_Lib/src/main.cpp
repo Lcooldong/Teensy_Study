@@ -2,9 +2,15 @@
 #include <SoftwareSerial.h>
 #include <ModbusRTUSlave.h>
 
+
+
+// Not working Yet
+
 #define SLAVE_ID 1
 
 SoftwareSerial RS485(0, 1); // RX,TX
+
+//TODO
 ModbusRTUSlave modbus(Serial1, 0);
 
 
